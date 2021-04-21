@@ -1,17 +1,17 @@
 ﻿// The MIT License(MIT)
-
+//
 // Copyright(c) 2021 Alberto Rodriguez Orozco & LiveCharts Contributors
-
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,47 +20,66 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using LiveChartsCore.Context;
+using LiveChartsCore.Kernel;
 using LiveChartsCore.Drawing;
 using System;
 
 namespace LiveChartsCore
 {
-    public abstract class StackedBarSeries<TModel, TVisual, TDrawingContext> : CartesianSeries<TModel, TVisual, TDrawingContext>, IStackedBarSeries<TDrawingContext>
+    /// <summary>
+    /// Defiens the stacked bar series class/
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model.</typeparam>
+    /// <typeparam name="TVisual">The type of the visual.</typeparam>
+    /// <typeparam name="TLabel">The type of the label.</typeparam>
+    /// <typeparam name="TDrawingContext">The type of the drawing context.</typeparam>
+    /// <seealso cref="CartesianSeries{TModel, TVisual, TLabel, TDrawingContext}" />
+    /// <seealso cref="IStackedBarSeries{TDrawingContext}" />
+    public abstract class StackedBarSeries<TModel, TVisual, TLabel, TDrawingContext>
+        : CartesianSeries<TModel, TVisual, TLabel, TDrawingContext>, IStackedBarSeries<TDrawingContext>
         where TVisual : class, ISizedVisualChartPoint<TDrawingContext>, new()
         where TDrawingContext : DrawingContext
+        where TLabel : class, ILabelGeometry<TDrawingContext>, new()
     {
-        protected static float pivot = 0;
+        /// <summary>
+        /// The elastic function
+        /// </summary>
+        protected static Func<float, float> elasticFunction = EasingFunctions.BuildCustomElasticOut(1.5f, 0.60f);
+
+        /// <summary>
+        /// The stack group
+        /// </summary>
         protected int stackGroup;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StackedBarSeries{TModel, TVisual, TLabel, TDrawingContext}"/> class.
+        /// </summary>
+        /// <param name="properties">The series properties.</param>
         public StackedBarSeries(SeriesProperties properties)
             : base(properties)
         {
             HoverState = LiveCharts.StackedBarSeriesHoverKey;
         }
 
+        /// <summary>
+        /// Gets or sets the stack group.
+        /// </summary>
+        /// <value>
+        /// The stack group.
+        /// </value>
         public int StackGroup { get => stackGroup; set => stackGroup = value; }
 
-        public double MaxColumnWidth { get; set; } = 30;
+        /// <summary>
+        /// Gets or sets the maximum width of the bar.
+        /// </summary>
+        /// <value>
+        /// The maximum width of the bar.
+        /// </value>
+        public double MaxBarWidth { get; set; } = 50;
 
-        Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>? IStackedBarSeries<TDrawingContext>.OnPointCreated
-        {
-            get => OnPointCreated as Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>;
-            set => OnPointCreated = value;
-        }
-
-        Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>? IStackedBarSeries<TDrawingContext>.OnPointAddedToState
-        {
-            get => OnPointAddedToState as Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>;
-            set => OnPointAddedToState = value;
-        }
-
-        Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>? IStackedBarSeries<TDrawingContext>.OnPointRemovedFromState
-        {
-            get => OnPointRemovedFromState as Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>;
-            set => OnPointRemovedFromState = value;
-        }
-
+        /// <summary>
+        /// Called when the paint context changed.
+        /// </summary>
         protected override void OnPaintContextChanged()
         {
             var context = new PaintContext<TDrawingContext>();
@@ -70,7 +89,7 @@ namespace LiveChartsCore
                 var fillClone = Fill.CloneTask();
                 var visual = new TVisual { X = 0, Y = 0, Height = (float)LegendShapeSize, Width = (float)LegendShapeSize };
                 fillClone.AddGeometyToPaintTask(visual);
-                context.PaintTasks.Add(fillClone);
+                _ = context.PaintTasks.Add(fillClone);
             }
 
             var w = LegendShapeSize;
@@ -79,14 +98,14 @@ namespace LiveChartsCore
                 var strokeClone = Stroke.CloneTask();
                 var visual = new TVisual
                 {
-                    X = strokeClone.StrokeWidth,
-                    Y = strokeClone.StrokeWidth,
+                    X = strokeClone.StrokeThickness,
+                    Y = strokeClone.StrokeThickness,
                     Height = (float)LegendShapeSize,
                     Width = (float)LegendShapeSize
                 };
-                w += 2 * strokeClone.StrokeWidth;
+                w += 2 * strokeClone.StrokeThickness;
                 strokeClone.AddGeometyToPaintTask(visual);
-                context.PaintTasks.Add(strokeClone);
+                _ = context.PaintTasks.Add(strokeClone);
             }
 
             context.Width = w;
@@ -95,6 +114,14 @@ namespace LiveChartsCore
             paintContext = context;
         }
 
-        public override int GetStackGroup() => stackGroup;
+        /// <summary>
+        /// Gets the stack group.
+        /// </summary>
+        /// <returns></returns>
+        /// <inheritdoc />
+        public override int GetStackGroup()
+        {
+            return stackGroup;
+        }
     }
 }

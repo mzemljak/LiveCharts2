@@ -1,17 +1,17 @@
 ﻿// The MIT License(MIT)
-
+//
 // Copyright(c) 2021 Alberto Rodriguez Orozco & LiveCharts Contributors
-
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,44 +20,50 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using LiveChartsCore.Context;
+using LiveChartsCore.Kernel;
 using LiveChartsCore.Drawing;
 using System;
 
 namespace LiveChartsCore
 {
-    public abstract class BarSeries<TModel, TVisual, TDrawingContext> : CartesianSeries<TModel, TVisual, TDrawingContext>, IBarSeries<TDrawingContext>
+    /// <summary>
+    /// Defines a bar series point.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model.</typeparam>
+    /// <typeparam name="TVisual">The type of the visual.</typeparam>
+    /// <typeparam name="TLabel">The type of the label.</typeparam>
+    /// <typeparam name="TDrawingContext">The type of the drawing context.</typeparam>
+    /// <seealso cref="CartesianSeries{TModel, TVisual, TLabel, TDrawingContext}" />
+    /// <seealso cref="IBarSeries{TDrawingContext}" />
+    public abstract class BarSeries<TModel, TVisual, TLabel, TDrawingContext> : CartesianSeries<TModel, TVisual, TLabel, TDrawingContext>, IBarSeries<TDrawingContext>
         where TVisual : class, ISizedVisualChartPoint<TDrawingContext>, new()
         where TDrawingContext : DrawingContext
+        where TLabel : class, ILabelGeometry<TDrawingContext>, new()
     {
+        /// <summary>
+        /// Gets the default elastic easing function.
+        /// </summary>
+        protected static Func<float, float> elasticFunction = EasingFunctions.BuildCustomElasticOut(1.5f, 0.60f);
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BarSeries{TModel, TVisual, TLabel, TDrawingContext}"/> class.
+        /// </summary>
+        /// <param name="properties">The properties.</param>
         public BarSeries(SeriesProperties properties)
             : base(properties)
         {
             HoverState = LiveCharts.BarSeriesHoverKey;
         }
 
-        public double Pivot { get; set; }
-        public double MaxBarWidth { get; set; } = 30;
+        /// <inheritdoc cref="IBarSeries{TDrawingContext}.MaxBarWidth"/>
+        public double MaxBarWidth { get; set; } = 50;
+
+        /// <inheritdoc cref="IBarSeries{TDrawingContext}.IgnoresBarPosition"/>
         public bool IgnoresBarPosition { get; set; } = false;
 
-        Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>? IBarSeries<TDrawingContext>.OnPointCreated
-        {
-            get => OnPointCreated as Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>;
-            set => OnPointCreated = value;
-        }
-
-        Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>? IBarSeries<TDrawingContext>.OnPointAddedToState
-        {
-            get => OnPointAddedToState as Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>;
-            set => OnPointAddedToState = value;
-        }
-
-        Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>? IBarSeries<TDrawingContext>.OnPointRemovedFromState
-        {
-            get => OnPointRemovedFromState as Action<ISizedGeometry<TDrawingContext>, IChartView<TDrawingContext>>;
-            set => OnPointRemovedFromState = value;
-        }
-
+        /// <summary>
+        /// Called when the paint context changes.
+        /// </summary>
         protected override void OnPaintContextChanged()
         {
             var context = new PaintContext<TDrawingContext>();
@@ -67,7 +73,7 @@ namespace LiveChartsCore
                 var fillClone = Fill.CloneTask();
                 var visual = new TVisual { X = 0, Y = 0, Height = (float)LegendShapeSize, Width = (float)LegendShapeSize };
                 fillClone.AddGeometyToPaintTask(visual);
-                context.PaintTasks.Add(fillClone);
+                _ = context.PaintTasks.Add(fillClone);
             }
 
             var w = LegendShapeSize;
@@ -76,14 +82,14 @@ namespace LiveChartsCore
                 var strokeClone = Stroke.CloneTask();
                 var visual = new TVisual
                 {
-                    X = strokeClone.StrokeWidth,
-                    Y = strokeClone.StrokeWidth,
+                    X = strokeClone.StrokeThickness,
+                    Y = strokeClone.StrokeThickness,
                     Height = (float)LegendShapeSize,
                     Width = (float)LegendShapeSize
                 };
-                w += 2 * strokeClone.StrokeWidth;
+                w += 2 * strokeClone.StrokeThickness;
                 strokeClone.AddGeometyToPaintTask(visual);
-                context.PaintTasks.Add(strokeClone);
+                _ = context.PaintTasks.Add(strokeClone);
             }
 
             context.Width = w;

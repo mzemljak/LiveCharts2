@@ -1,6 +1,6 @@
-﻿using System.Timers;
+﻿using System;
 using System.Windows;
-using ViewModelsSamples;
+using System.Windows.Input;
 
 namespace WPFSample
 {
@@ -9,29 +9,20 @@ namespace WPFSample
     /// </summary>
     public partial class MainWindow : Window
     {
-        private CartesianViewModel viewModel;
-
         public MainWindow()
         {
             InitializeComponent();
-
-            var c = DataContext as CartesianViewModel;
-            if (c == null) return;
-
-            viewModel = c;
-
-            var t = new Timer();
-            t.Interval = 1000;
-            t.Elapsed += T_Elapsed;
-            t.Start();
+            Samples = ViewModelsSamples.Index.Samples;
+            DataContext = this;
         }
 
-        private void T_Elapsed(object sender, ElapsedEventArgs e)
+        public string[] Samples { get; set; }
+
+        private void Border_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                viewModel?.Randomize();
-            });
+            var ctx = (sender as FrameworkElement).DataContext as string;
+            if (ctx == null) throw new Exception("Sample not found");
+            content.Content = Activator.CreateInstance(null, $"WPFSample.{ctx.Replace('/', '.')}.View").Unwrap();
         }
     }
 }

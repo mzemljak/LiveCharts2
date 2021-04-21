@@ -1,17 +1,17 @@
 ﻿// The MIT License(MIT)
-
+//
 // Copyright(c) 2021 Alberto Rodriguez Orozco & LiveCharts Contributors
-
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,8 +24,17 @@ using System.Drawing;
 
 namespace LiveChartsCore
 {
+    /// <summary>
+    /// Defines a set of predefined colors to use.
+    /// </summary>
     public static class ColorPacks
     {
+        /// <summary>
+        /// Gets the fluent design colors.
+        /// </summary>
+        /// <value>
+        /// The fluent design.
+        /// </value>
         public static Color[] FluentDesign => new Color[]
         {
             RGB(116,77,169),
@@ -39,6 +48,12 @@ namespace LiveChartsCore
             RGB(0,183,195)
         };
 
+        /// <summary>
+        /// Gets the material design500 colors.
+        /// </summary>
+        /// <value>
+        /// The material design500.
+        /// </value>
         public static Color[] MaterialDesign500 => new Color[]
         {
             RGB(33,150,243),    // blue
@@ -52,32 +67,50 @@ namespace LiveChartsCore
             RGB(96,125,139),    // blue gray
         };
 
+        /// <summary>
+        /// Gets the material design200 colors.
+        /// </summary>
+        /// <value>
+        /// The material design200.
+        /// </value>
         public static Color[] MaterialDesign200 => new Color[]
         {
-            RGB(144,202,249),    // blue
-            RGB(239,154,154),     // red
-            RGB(197,225,165),    // light green
-            RGB(128,222,234),     // cyan
-            RGB(159,168,218),     // indigo
-            RGB(255,224,130),     // ambar
-            RGB(128,203,196),     // teal
-            RGB(244,143,177),     // pink
-            RGB(176,190,197),    // blue gray
+            RGB(144,202,249),   // blue
+            RGB(239,154,154),   // red
+            RGB(197,225,165),   // light green
+            RGB(128,222,234),   // cyan
+            RGB(159,168,218),   // indigo
+            RGB(255,224,130),   // ambar
+            RGB(128,203,196),   // teal
+            RGB(244,143,177),   // pink
+            RGB(176,190,197),   // blue gray
         };
 
+        /// <summary>
+        /// Gets the material design800 colors.
+        /// </summary>
+        /// <value>
+        /// The material design800.
+        /// </value>
         public static Color[] MaterialDesign800 => new Color[]
         {
             RGB(21,101,192),    // blue
             RGB(198,40,40),     // red
-            RGB(85,139,47),    // light green
+            RGB(85,139,47),     // light green
             RGB(0,131,143),     // cyan
             RGB(40,53,147),     // indigo
             RGB(255,143,0),     // ambar
-            RGB(0,105,92),     // teal
+            RGB(0,105,92),      // teal
             RGB(173,20,87),     // pink
-            RGB(55,71,79),    // blue gray
+            RGB(55,71,79),      // blue gray
         };
 
+        /// <summary>
+        /// Gets the blues colors.
+        /// </summary>
+        /// <value>
+        /// The blues.
+        /// </value>
         public static Color[] Blues => new Color[]
         {
             RGB(13,71,161),
@@ -86,6 +119,12 @@ namespace LiveChartsCore
             RGB(187,222,251)
         };
 
+        /// <summary>
+        /// Gets the reds.
+        /// </summary>
+        /// <value>
+        /// The reds.
+        /// </value>
         public static Color[] Reds => new Color[]
         {
             RGB(183,28,28),
@@ -94,6 +133,12 @@ namespace LiveChartsCore
             RGB(229,115,115)
         };
 
+        /// <summary>
+        /// Gets the greens.
+        /// </summary>
+        /// <value>
+        /// The greens.
+        /// </value>
         public static Color[] Greens => new Color[]
         {
             RGB(51,105,30),
@@ -102,6 +147,12 @@ namespace LiveChartsCore
             RGB(174,213,129)
         };
 
+        /// <summary>
+        /// Gets the grays.
+        /// </summary>
+        /// <value>
+        /// The grays.
+        /// </value>
         public static Color[] Grays => new Color[]
         {
             RGB(38,50,56),
@@ -110,6 +161,12 @@ namespace LiveChartsCore
             RGB(144,164,174)
         };
 
+        /// <summary>
+        /// Gets the energy.
+        /// </summary>
+        /// <value>
+        /// The energy.
+        /// </value>
         public static Color[] Energy => new Color[]
         {
             RGB(17,29,94),
@@ -118,6 +175,12 @@ namespace LiveChartsCore
             RGB(192,226,24)
         };
 
+        /// <summary>
+        /// Gets the nature.
+        /// </summary>
+        /// <value>
+        /// The nature.
+        /// </value>
         public static Color[] Nature => new Color[]
         {
             RGB(133,96,63),
@@ -126,7 +189,12 @@ namespace LiveChartsCore
             RGB(227,209,138)
         };
 
-
+        /// <summary>
+        /// Gets the cloudy.
+        /// </summary>
+        /// <value>
+        /// The cloudy.
+        /// </value>
         public static Color[] Cloudy => new Color[]
         {
             RGB(176,136,249),
@@ -135,6 +203,13 @@ namespace LiveChartsCore
             RGB(218,159,249)
         };
 
+
+        /// <summary>
+        /// Gets the candy.
+        /// </summary>
+        /// <value>
+        /// The candy.
+        /// </value>
         public static Color[] Candy => new Color[]
         {
             RGB(97,85,166),
@@ -143,6 +218,13 @@ namespace LiveChartsCore
             RGB(255,230,230)
         };
 
+
+        /// <summary>
+        /// Gets the fishy.
+        /// </summary>
+        /// <value>
+        /// The fishy.
+        /// </value>
         public static Color[] Fishy => new Color[]
         {
             RGB(255,146,146),
@@ -151,6 +233,12 @@ namespace LiveChartsCore
             RGB(255,232,232)
         };
 
+        /// <summary>
+        /// Gets the late summer.
+        /// </summary>
+        /// <value>
+        /// The late summer.
+        /// </value>
         public static Color[] LateSummer => new Color[]
         {
             RGB(130,38,89),
@@ -159,6 +247,9 @@ namespace LiveChartsCore
             RGB(248,161,209)
         };
 
-        public static Color RGB(byte r, byte g, byte b) => Color.FromArgb(255, r, g, b);
+        private static Color RGB(byte r, byte g, byte b)
+        {
+            return Color.FromArgb(255, r, g, b);
+        }
     }
 }

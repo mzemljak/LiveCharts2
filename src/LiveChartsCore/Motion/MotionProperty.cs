@@ -1,17 +1,17 @@
 ﻿// The MIT License(MIT)
-
+//
 // Copyright(c) 2021 Alberto Rodriguez Orozco & LiveCharts Contributors
-
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,15 +31,27 @@ namespace LiveChartsCore.Motion
     /// <typeparam name="T"></typeparam>
     public abstract class MotionProperty<T> : IMotionProperty
     {
-        private Animation? animation;
+        /// <summary>
+        /// From value
+        /// </summary>
         protected internal T? fromValue = default;
+
+        /// <summary>
+        /// To value
+        /// </summary>
         protected internal T? toValue = default;
+
+        private Animation? animation;
         internal long startTime;
         internal long endTime;
-        private bool isTransitionCompleted = false;
+        private bool isCompleted = false;
         private readonly string propertyName;
         private bool requiresToInitialize = true;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MotionProperty{T}"/> class.
+        /// </summary>
+        /// <param name="propertyName">Name of the property.</param>
         public MotionProperty(string propertyName)
         {
             this.propertyName = propertyName;
@@ -65,30 +77,37 @@ namespace LiveChartsCore.Motion
         /// </summary>
         public string PropertyName => propertyName;
 
-        public bool IsCompleted { get => isTransitionCompleted; set => isTransitionCompleted = value; }
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance is completed.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is completed; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsCompleted { get => isCompleted; set => isCompleted = value; }
 
         /// <summary>
         /// Moves to he specified value.
         /// </summary>
         /// <param name="value">The value to move to.</param>
-        /// <param name="animatable">The <see cref="Visual"/> instance that is moving.</param>
+        /// <param name="animatable">The <see cref="IAnimatable"/> instance that is moving.</param>
         public void SetMovement(T value, Animatable animatable)
         {
             fromValue = GetMovement(animatable);
             toValue = value;
             if (animation != null)
             {
-                if (animatable.currentTime == long.MinValue) // the animatable is not in the canvas yet.
+                if (animatable._currentTime == long.MinValue) // the animatable is not in the canvas yet.
                 {
                     requiresToInitialize = true;
                 }
                 else
                 {
-                    startTime = animatable.currentTime;
-                    endTime = animatable.currentTime + animation.duration;
+                    startTime = animatable._currentTime;
+                    endTime = animatable._currentTime + animation._duration;
                 }
-                animation.animationCompletedCount = 0;
-                isTransitionCompleted = false;
+                animation._animationCompletedCount = 0;
+                isCompleted = false;
+                requiresToInitialize = true;
             }
             animatable.Invalidate();
         }
@@ -100,44 +119,46 @@ namespace LiveChartsCore.Motion
         /// <returns></returns>
         public T GetMovement(Animatable animatable)
         {
-            if (animation == null || fromValue == null || isTransitionCompleted) return OnGetMovement(1);
+            if (animation == null || fromValue == null || isCompleted) return OnGetMovement(1);
 
             if (requiresToInitialize)
             {
-                startTime = animatable.currentTime;
-                endTime = animatable.currentTime + animation.duration;
+                startTime = animatable._currentTime;
+                endTime = animatable._currentTime + animation._duration;
                 requiresToInitialize = false;
             }
 
             // at this points we are sure that the animatable has not finished at least with this property.
-            animatable.isCompleted = false;
+            animatable._isCompleted = false;
 
             // is this line necessary? ...
             //if (animatable.currentTime - startTime <= 0) return OnGetMovement(0);
 
-            unchecked
+            var p = (animatable._currentTime - startTime) / unchecked((float)(endTime - startTime));
+
+            if (p >= 1)
             {
-                var p = (animatable.currentTime - startTime) / (float)(endTime - startTime);
-
-                if (p >= 1)
+                // at this point the animation is completed
+                p = 1;
+                animation._animationCompletedCount++;
+                isCompleted = animation._repeatTimes != int.MaxValue && animation._repeatTimes < animation._animationCompletedCount;
+                if (!isCompleted)
                 {
-                    // at this point the animation is completed
-                    p = 1;
-                    animation.animationCompletedCount++;
-                    isTransitionCompleted = animation.repeatTimes != int.MaxValue && animation.repeatTimes < animation.animationCompletedCount;
-                    if (!isTransitionCompleted)
-                    {
-                        startTime = animatable.currentTime;
-                        endTime = animatable.currentTime + animation.duration;
-                        isTransitionCompleted = false;
-                    }
+                    startTime = animatable._currentTime;
+                    endTime = animatable._currentTime + animation._duration;
+                    isCompleted = false;
                 }
-
-                var fp = animation.EasingFunction(p);
-                return OnGetMovement(fp);
             }
+
+            var fp = animation.EasingFunction(p);
+            return OnGetMovement(fp);
         }
 
+        /// <summary>
+        /// Called to get the movement at a specific progress.
+        /// </summary>
+        /// <param name="progress">The progress.</param>
+        /// <returns></returns>
         protected abstract T OnGetMovement(float progress);
     }
 }

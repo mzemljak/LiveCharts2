@@ -41,7 +41,11 @@ In the next image we are also animating The StrokeDash array of our column serie
 
 ### About this repo
 
-Net 5 is required, latest Visual studio would help, Xamarin SDK might be required if you need to run the xamarin samples.
+Net 5 is required, latest Visual studio, Xamarin SDK might be required if you need to run the xamarin samples.
+
+To compile Uno WASM you require to install a [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10),
+once done install netcore 3 and 5 in your linux terminal, if you have never done a Uno WASM build, you could start with
+https://github.com/unoplatform/uno then try to get all the requirements to compile the SkiaShap sample https://github.com/unoplatform/Uno.Samples/tree/master/UI/SkiaSharpTest, once you got these 2, you will be able also compile the LiveCharts Uno WASM sample.
 
 The project contains 3 folders:
 
@@ -70,26 +74,25 @@ The following topics require a solution that will only work for an specific plat
 - [x] ~~Buid a WPF default tooltip~~
 - [x] ~~Buid a WPF default legend~~
 - [x] ~~Buid a Winforms View~~
-- [ ] Buid a Winforms default tooltip
-- [ ] Buid a Winforms default legend
+- [x] ~~Buid a Winforms default tooltip~~
+- [x] ~~Buid a Winforms default legend~~
 - [x] ~~Buid a Xamarin Forms View~~
-- [ ] Buid a Xamarin default tooltip
-- [ ] Buid a Xamarin default legend
-- [ ] Buid an UnoPlatform View
+- [x] ~~Buid a Xamarin default tooltip~~
+- [x] ~~Buid a Xamarin default legend~~
+- [x] ~~Buid an UnoPlatform View~~ (Uno platform is paused due multiple uno/skia wasm issues)
 - [ ] Buid an UnoPlatform default tooltip
 - [ ] Buid an UnoPlatform default legend
-- [ ] Buid an Avalonia View
-- [ ] Buid an Avalonia default tooltip
-- [ ] Buid an Avalonia default legend
-- [ ] Buid or at least try a view for WASM, Blazor... and the tooltip and legend
+- [x] ~~Buid an Avalonia View~~
+- [x] ~~Buid an Avalonia default tooltip~~
+- [x] ~~Buid an Avalonia default legend~~
 
 ##### Shared tasks
 
 The following topics will work on any platform.
 
 - [x] ~~Create the Chart class, an object that coordinates every object inside the chart~~
-- [ ] Allow zooming
-- [ ] Allow panning
+- [x] ~~Allow zooming~~
+- [x] ~~Allow panning~~
 - [x] ~~Create the Axis class, an object that defines the data range in a plane (x or y) and scale a chart point to the screen based on the data range in the axis~~
 - [x] ~~Draw Axes in the UI~~
 - [x] ~~Multiple axes in the same chart~~
@@ -99,37 +102,39 @@ The following topics will work on any platform.
 - [ ] Allow the chart to have external elements in the UI ([visual elements](https://lvcharts.net/App/examples/v1/wpf/Visual%20Elements))
 - [x] ~~Create the Series class, an object that is able to draw a data set in the screen in diferent ways (defined by the class that inherits from this) a series must be flexible, practically anything was plotted, could be changed by the user, it must also animate when the data changes~~
 
-- [ ] LineSeries
+- [x] ~~Negative stacked series~~
+
+- [x] ~~LineSeries~~
   - [x] ~~Draw a basic Spline that allows to customize the curve smoothness~~
   - [x] ~~Allow the user to define a custom geometry for every point in the line~~
   - [x] ~~allow gaps in the line series~~
-  - [ ] allow data labels and make them cutomizable
+  - [x] ~~allow data labels and make them cutomizable~~
     
-- [ ] ColumnSeries
+- [x] ~~ColumnSeries~~
   - [x] ~~Draw a basic column~~
   - [x] ~~Allow the user to define a custom geometry for every column in the series~~
   - [x] ~~Layered columns~~
   - [x] ~~allow vertical mode~~
-  - [ ] allow data labels and make them cutomizable
+  - [x] ~~allow data labels and make them cutomizable~~
   
-- [ ] StackedColumnSeries
+- [x] ~~StackedColumnSeries~~
   - [x] ~~Draw a basic stacked column~~
   - [x] ~~Allow the user to define a custom geometry for every column in the series~~
   - [x] ~~allow vertical mode~~
-  - [ ] allow data labels and make them cutomizable
+  - [x] ~~allow data labels and make them cutomizable~~
   
-- [ ] StackedAreaSeries
+- [x] ~~StackedAreaSeries~~
   - [x] ~~Draw a basic stacked area~~
-  - [ ] allow data labels and make them cutomizable
+  - [x] ~~allow data labels and make them cutomizable~~
   
-- [ ] ScatteredSeries
+- [x] ~~ScatteredSeries~~
   - [x] ~~Draw a basic scatered series~~
   - [x] ~~Allow the user to define a custom geometry for every point in the series~~
   - [x] ~~Allow points to have a "weight" so we can scale on "Z", see  [bubble chart](https://lvcharts.net/App/examples/v1/wpf/Bubble%20Chart)~~
-  - [ ] allow data labels and make them cutomizable
+  - [x] ~~allow data labels and make them cutomizable~~
   
-- [ ] PieChart and Pie Series
+- [x] ~~PieChart and Pie Series~~
   - [x] ~~Draw a basic pie slice geometry, where the corners could be rounded and you can define a "wedge" property so we can make a [doughnut](https://lvcharts.net/App/examples/v1/wpf/Doughnut%20Chart)~~
-  - [ ] allow data labels and make them cutomizable
+  - [x] ~~allow data labels and make them cutomizable~~
   
 - [ ] Solid Gauges
