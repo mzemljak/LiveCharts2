@@ -34,7 +34,7 @@ namespace LiveChartsCore.SkiaSharpView.WPF
     /// <inheritdoc cref="IPieChartView{TDrawingContext}" />
     public class PieChart : Chart, IPieChartView<SkiaSharpDrawingContext>
     {
-        private readonly CollectionDeepObserver<ISeries> seriesObserver;
+        private readonly CollectionDeepObserver<ISeries> _seriesObserver;
 
         static PieChart()
         {
@@ -46,7 +46,7 @@ namespace LiveChartsCore.SkiaSharpView.WPF
         /// </summary>
         public PieChart()
         {
-            seriesObserver = new CollectionDeepObserver<ISeries>(
+            _seriesObserver = new CollectionDeepObserver<ISeries>(
                 (object? sender, NotifyCollectionChangedEventArgs e) =>
                 {
                     if (core == null) return;
@@ -58,7 +58,7 @@ namespace LiveChartsCore.SkiaSharpView.WPF
                     Application.Current.Dispatcher.Invoke(() => core.Update());
                 });
 
-            Series = new ObservableCollection<ISeries>();
+            SetCurrentValue(SeriesProperty, new ObservableCollection<ISeries>());
         }
 
         /// <summary>
@@ -70,26 +70,66 @@ namespace LiveChartsCore.SkiaSharpView.WPF
                     (DependencyObject o, DependencyPropertyChangedEventArgs args) =>
                     {
                         var chart = (PieChart)o;
-                        var seriesObserver = chart.seriesObserver;
+                        var seriesObserver = chart._seriesObserver;
                         seriesObserver.Dispose((IEnumerable<ISeries>)args.OldValue);
                         seriesObserver.Initialize((IEnumerable<ISeries>)args.NewValue);
                         if (chart.core == null) return;
                         Application.Current.Dispatcher.Invoke(() => chart.core.Update());
+                    },
+                    (DependencyObject o, object value) =>
+                    {
+                        return value is IEnumerable<ISeries> ? value : new ObservableCollection<ISeries>();
                     }));
 
-        PieChart<SkiaSharpDrawingContext> IPieChartView<SkiaSharpDrawingContext>.Core
-        {
-            get
-            {
-                return core == null ? throw new Exception("core not found") : (PieChart<SkiaSharpDrawingContext>)core;
-            }
-        }
+        /// <summary>
+        /// The initial rotation property
+        /// </summary>
+        public static readonly DependencyProperty InitialRotationProperty =
+            DependencyProperty.Register(
+                nameof(InitialRotation), typeof(double), typeof(Chart), new PropertyMetadata(360d, OnDependencyPropertyChanged));
+
+        /// <summary>
+        /// The maximum angle property
+        /// </summary>
+        public static readonly DependencyProperty MaxAngleProperty =
+            DependencyProperty.Register(
+                nameof(MaxAngle), typeof(double), typeof(Chart), new PropertyMetadata(360d, OnDependencyPropertyChanged));
+
+        /// <summary>
+        /// The total property
+        /// </summary>
+        public static readonly DependencyProperty TotalProperty =
+            DependencyProperty.Register(
+                nameof(Total), typeof(double?), typeof(Chart), new PropertyMetadata(null, OnDependencyPropertyChanged));
+
+        PieChart<SkiaSharpDrawingContext> IPieChartView<SkiaSharpDrawingContext>.Core => core == null ? throw new Exception("core not found") : (PieChart<SkiaSharpDrawingContext>)core;
 
         /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.Series" />
         public IEnumerable<ISeries> Series
         {
             get => (IEnumerable<ISeries>)GetValue(SeriesProperty);
             set => SetValue(SeriesProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.InitialRotation" />
+        public double InitialRotation
+        {
+            get => (double)GetValue(InitialRotationProperty);
+            set => SetValue(InitialRotationProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.MaxAngle" />
+        public double MaxAngle
+        {
+            get => (double)GetValue(MaxAngleProperty);
+            set => SetValue(MaxAngleProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.Total" />
+        public double? Total
+        {
+            get => (double?)GetValue(TotalProperty);
+            set => SetValue(TotalProperty, value);
         }
 
         /// <summary>

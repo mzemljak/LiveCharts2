@@ -60,16 +60,36 @@ namespace LiveChartsCore.Kernel
         /// <summary>
         /// The stacked series
         /// </summary>
-        Stacked = 1 << 6,
+        Stacked = 1 << 7,
 
         /// <summary>
         /// The vertical orientation
         /// </summary>
-        VerticalOrientation = 1 << 7,
+        PrimaryAxisVerticalOrientation = 1 << 8,
 
         /// <summary>
         /// The horizontal orientation
         /// </summary>
-        HorizontalOrientation = 1 << 8
+        PrimaryAxisHorizontalOrientation = 1 << 9,
+
+        /// <summary>
+        /// The gauge.
+        /// </summary>
+        Gauge = 1 << 10,
+
+        /// <summary>
+        /// The gauge fill.
+        /// </summary>
+        GaugeFill = 1 << 11,
+
+        /// <summary>
+        /// The sketch
+        /// </summary>
+        Sketch = 1 << 12,
+
+        /// <summary>
+        /// The solid
+        /// </summary>
+        Solid = 1 << 13
     }
 }

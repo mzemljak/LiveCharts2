@@ -45,12 +45,15 @@ namespace LiveChartsCore.Drawing
             _stopwatch.Start();
         }
 
-        internal HashSet<IDrawable<TDrawingContext>> MeasuredDrawables { get; set; } = new();
-
         /// <summary>
-        /// Occurs then the visual is invalidated.
+        /// Occurs when the visual is invalidated.
         /// </summary>
         public event Action<MotionCanvas<TDrawingContext>>? Invalidated;
+
+        /// <summary>
+        /// Occurs when all the visuals in the canvas are valid.
+        /// </summary>
+        public event Action<MotionCanvas<TDrawingContext>>? Validated;
 
         /// <summary>
         /// Returns true if the visual is valid.
@@ -93,36 +96,34 @@ namespace LiveChartsCore.Drawing
                     {
                         geometry.IsCompleted = true;
                         geometry.CurrentTime = frameTime;
-                        geometry.Draw(context);
+                        if (!task.IsPaused) geometry.Draw(context);
 
                         isValid = isValid && geometry.IsCompleted;
 
                         if (geometry.IsCompleted && geometry.RemoveOnCompleted)
                             toRemoveGeometries.Add(
                                 new Tuple<IDrawableTask<TDrawingContext>, IDrawable<TDrawingContext>>(task, geometry));
-                        //if (!MeasuredDrawables.Contains(geometry))
-                        //    toRemoveGeometries.Add(
-                        //        new Tuple<IDrawableTask<TDrawingContext>, IDrawable<TDrawingContext>>(task, geometry));
                     }
 
-                    task.Dispose();
-
                     isValid = isValid && task.IsCompleted;
-                    task.Dispose();
 
                     if (task.RemoveOnCompleted && task.IsCompleted) _ = _paintTasks.Remove(task);
+                    task.Dispose();
                 }
 
                 foreach (var tuple in toRemoveGeometries)
                 {
                     tuple.Item1.RemoveGeometryFromPainTask(tuple.Item2);
-                    // if we removed at least one gemetry, we need to redraw the chart
+
+                    // if we removed at least one geometry, we need to redraw the chart
                     // to ensure it is not present in the next frame
                     isValid = false;
                 }
 
                 IsValid = isValid;
             }
+
+            if (IsValid) Validated?.Invoke(this);
         }
 
         /// <summary>

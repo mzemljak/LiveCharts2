@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using LiveChartsCore.Measure;
 using System.Drawing;
+using System.Linq;
 
 namespace LiveChartsCore
 {
@@ -36,30 +37,73 @@ namespace LiveChartsCore
         where TVisual : class, IDoughnutVisualChartPoint<TDrawingContext>, new()
         where TLabel : class, ILabelGeometry<TDrawingContext>, new()
     {
+        private double _pushout = 0;
+        private double _innerRadius = 0;
+        private double _maxOuterRadius = 1;
+        private double _hoverPushout = 20;
+        private double _innerPadding = 0;
+        private double _outerPadding = 0;
+        private double _maxRadialColW = double.MaxValue;
+        private double _cornerRadius = 0;
+        private RadialAlignment _radialAlign = RadialAlignment.Outer;
+        private bool _invertedCornerRadius = false;
+        private bool _isFillSeries;
+        private PolarLabelsPosition _labelsPosition;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="PieSeries{TModel, TVisual, TLabel, TDrawingContext}"/> class.
         /// </summary>
-        public PieSeries() : base(SeriesProperties.PieSeries | SeriesProperties.Stacked)
+        public PieSeries(bool isGauge = false, bool isGaugeFill = false)
+            : base(SeriesProperties.PieSeries | SeriesProperties.Stacked |
+                  (isGauge ? SeriesProperties.Gauge : 0) | (isGaugeFill ? SeriesProperties.GaugeFill : 0) | SeriesProperties.Solid)
         {
             HoverState = LiveCharts.PieSeriesHoverKey;
         }
 
         /// <inheritdoc cref="IPieSeries{TDrawingContext}.Pushout"/>
-        public double Pushout { get; set; } = 5;
-
+        public double Pushout { get => _pushout; set { _pushout = value; OnPropertyChanged(); } }
         /// <inheritdoc cref="IPieSeries{TDrawingContext}.InnerRadius"/>
-        public double InnerRadius { get; set; } = 0;
+        public double InnerRadius { get => _innerRadius; set { _innerRadius = value; OnPropertyChanged(); } }
 
         /// <inheritdoc cref="IPieSeries{TDrawingContext}.MaxOuterRadius"/>
-        public double MaxOuterRadius { get; set; } = 1;
+        public double MaxOuterRadius { get => _maxOuterRadius; set { _maxOuterRadius = value; OnPropertyChanged(); } }
 
         /// <inheritdoc cref="IPieSeries{TDrawingContext}.HoverPushout"/>
-        public double HoverPushout { get; set; } = 20;
+        public double HoverPushout { get => _hoverPushout; set { _hoverPushout = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.RelativeInnerRadius"/>
+        public double RelativeInnerRadius { get => _innerPadding; set { _innerPadding = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.RelativeOuterRadius"/>
+        public double RelativeOuterRadius { get => _outerPadding; set { _outerPadding = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.MaxRadialColumnWidth"/>
+        public double MaxRadialColumnWidth { get => _maxRadialColW; set { _maxRadialColW = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.RadialAlign"/>
+        public RadialAlignment RadialAlign { get => _radialAlign; set { _radialAlign = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.CornerRadius"/>
+        public double CornerRadius { get => _cornerRadius; set { _cornerRadius = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.InvertedCornerRadius"/>
+        public bool InvertedCornerRadius { get => _invertedCornerRadius; set { _invertedCornerRadius = value; OnPropertyChanged(); } }
+
+        /// <inheritdoc cref="IPieSeries{TDrawingContext}.IsFillSeries"/>
+        public bool IsFillSeries { get => _isFillSeries; set { _isFillSeries = value; OnPropertyChanged(); } }
+
+        /// <summary>
+        /// Gets or sets the data labels position.
+        /// </summary>
+        /// <value>
+        /// The data labels position.
+        /// </value>
+        public PolarLabelsPosition DataLabelsPosition { get => _labelsPosition; set { _labelsPosition = value; OnPropertyChanged(); } }
 
         /// <inheritdoc cref="IPieSeries{TDrawingContext}.Measure(PieChart{TDrawingContext})"/>
         public void Measure(PieChart<TDrawingContext> chart)
         {
-            var drawLocation = chart.DrawMaringLocation;
+            var drawLocation = chart.DrawMarginLocation;
             var drawMarginSize = chart.DrawMarginSize;
             var minDimension = drawMarginSize.Width < drawMarginSize.Height ? drawMarginSize.Width : drawMarginSize.Height;
 
@@ -70,6 +114,11 @@ namespace LiveChartsCore
 
             minDimension = minDimension - (Stroke?.StrokeThickness ?? 0) * 2 - maxPushout * 2;
             minDimension *= maxOuterRadius;
+
+            var view = (IPieChartView<TDrawingContext>)chart.View;
+            var initialRotation = (float)Math.Truncate(view.InitialRotation);
+            var completeAngle = (float)view.MaxAngle;
+            var chartTotal = (float?)view.Total;
 
             var actualZIndex = ZIndex == 0 ? ((ISeries)this).SeriesId : ZIndex;
             if (Fill != null)
@@ -86,7 +135,7 @@ namespace LiveChartsCore
             }
             if (DataLabelsDrawableTask != null)
             {
-                DataLabelsDrawableTask.ZIndex = actualZIndex + 0.3;
+                DataLabelsDrawableTask.ZIndex = 1000 + actualZIndex + 0.3;
                 DataLabelsDrawableTask.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
                 chart.Canvas.AddDrawableTask(DataLabelsDrawableTask);
             }
@@ -94,12 +143,49 @@ namespace LiveChartsCore
             var cx = drawLocation.X + drawMarginSize.Width * 0.5f;
             var cy = drawLocation.Y + drawMarginSize.Height * 0.5f;
 
+            var dls = (float)DataLabelsSize;
             var stacker = chart.SeriesContext.GetStackPosition(this, GetStackGroup());
             if (stacker == null) throw new NullReferenceException("Unexpected null stacker");
 
             var toDeletePoints = new HashSet<ChartPoint>(everFetched);
 
-            foreach (var point in Fetch(chart))
+            var fetched = Fetch(chart).ToArray();
+
+            var stackedInnerRadius = innerRadius;
+            var relativeInnerRadius = (float)RelativeInnerRadius;
+            var relativeOuterRadius = (float)RelativeOuterRadius;
+            var maxRadialWidth = (float)MaxRadialColumnWidth;
+            var cornerRadius = (float)CornerRadius;
+
+            var mdc = minDimension;
+            var wc = mdc - (mdc - 2 * innerRadius) * (fetched.Length - 1) / fetched.Length - relativeOuterRadius * 2;
+
+            if (wc * 0.5f - stackedInnerRadius > maxRadialWidth)
+            {
+                var dw = wc * 0.5f - stackedInnerRadius - maxRadialWidth;
+
+                switch (RadialAlign)
+                {
+                    case RadialAlignment.Outer:
+                        relativeOuterRadius = 0;
+                        relativeInnerRadius = dw;
+                        break;
+                    case RadialAlignment.Center:
+                        relativeOuterRadius = dw * 0.5f;
+                        relativeInnerRadius = dw * 0.5f;
+                        break;
+                    case RadialAlignment.Inner:
+                        relativeOuterRadius = dw;
+                        relativeInnerRadius = 0;
+                        break;
+                    default:
+                        throw new NotImplementedException($"The alignment {RadialAlign} is not supported.");
+                }
+            }
+
+            var i = 1f;
+
+            foreach (var point in fetched)
             {
                 var visual = point.Context.Visual as TVisual;
 
@@ -107,16 +193,17 @@ namespace LiveChartsCore
                 {
                     if (visual != null)
                     {
-                        visual.CenterX = drawLocation.X + drawMarginSize.Width * 0.5f;
-                        visual.CenterY = drawLocation.Y + drawMarginSize.Height * 0.5f;
+                        visual.CenterX = cx;
+                        visual.CenterY = cy;
                         visual.X = cx;
                         visual.Y = cy;
                         visual.Width = 0;
                         visual.Height = 0;
                         visual.SweepAngle = 0;
-                        visual.StartAngle = 0;
+                        visual.StartAngle = initialRotation;
                         visual.PushOut = 0;
                         visual.InnerRadius = 0;
+                        visual.CornerRadius = 0;
                         visual.RemoveOnCompleted = true;
                         point.Context.Visual = null;
                     }
@@ -125,24 +212,41 @@ namespace LiveChartsCore
 
                 var stack = stacker.GetStack(point);
                 var stackedValue = stack.Start;
-                var total = stack.Total;
-                var start = stackedValue / total * 360;
-                var end = (stackedValue + point.PrimaryValue) / total * 360 - start;
+                var total = chartTotal ?? stack.Total;
+
+                float start, end;
+                if (total == 0)
+                {
+                    start = 0;
+                    end = 0;
+                }
+                else
+                {
+                    start = stackedValue / total * completeAngle;
+                    end = (stackedValue + point.PrimaryValue) / total * completeAngle - start;
+                }
+
+                if (IsFillSeries)
+                {
+                    start = 0;
+                    end = completeAngle - 0.1f;
+                }
 
                 if (visual == null)
                 {
                     var p = new TVisual
                     {
-                        CenterX = drawLocation.X + drawMarginSize.Width * 0.5f,
-                        CenterY = drawLocation.Y + drawMarginSize.Height * 0.5f,
+                        CenterX = cx,
+                        CenterY = cy,
                         X = cx,
                         Y = cy,
                         Width = 0,
                         Height = 0,
-                        StartAngle = 0,
+                        StartAngle = chart.IsFirstDraw ? initialRotation : start + initialRotation,
                         SweepAngle = 0,
                         PushOut = 0,
-                        InnerRadius = 0
+                        InnerRadius = 0,
+                        CornerRadius = 0
                     };
 
                     visual = p;
@@ -153,29 +257,99 @@ namespace LiveChartsCore
                     _ = everFetched.Add(point);
                 }
 
-                if (Fill != null) Fill.AddGeometyToPaintTask(visual);
-                if (Stroke != null) Stroke.AddGeometyToPaintTask(visual);
+                if (Fill != null) Fill.AddGeometryToPaintTask(visual);
+                if (Stroke != null) Stroke.AddGeometryToPaintTask(visual);
 
                 var dougnutGeometry = visual;
 
-                dougnutGeometry.PushOut = pushout;
-                dougnutGeometry.CenterX = drawLocation.X + drawMarginSize.Width * 0.5f;
-                dougnutGeometry.CenterY = drawLocation.Y + drawMarginSize.Height * 0.5f;
-                dougnutGeometry.X = (drawMarginSize.Width - minDimension) * 0.5f;
-                dougnutGeometry.Y = (drawMarginSize.Height - minDimension) * 0.5f;
-                dougnutGeometry.Width = minDimension;
-                dougnutGeometry.Height = minDimension;
-                dougnutGeometry.InnerRadius = innerRadius;
-                dougnutGeometry.PushOut = pushout;
-                dougnutGeometry.RemoveOnCompleted = false;
-                dougnutGeometry.StartAngle = start;
-                dougnutGeometry.SweepAngle = end;
-                if (start == 0 && end == 360) dougnutGeometry.SweepAngle = 359.9999f;
+                stackedInnerRadius += relativeInnerRadius;
 
-                point.Context.HoverArea = new SemicircleHoverArea().SetDimensions(cx, cy, start, start + end, minDimension * 0.5f);
+                var md = minDimension;
+                var w = md - (md - 2 * innerRadius) * (fetched.Length - i) / fetched.Length - relativeOuterRadius * 2;
+
+                var x = (drawMarginSize.Width - w) * 0.5f;
+
+                dougnutGeometry.CenterX = cx;
+                dougnutGeometry.CenterY = cy;
+                dougnutGeometry.X = x;
+                dougnutGeometry.Y = (drawMarginSize.Height - w) * 0.5f;
+                dougnutGeometry.Width = w;
+                dougnutGeometry.Height = w;
+                dougnutGeometry.InnerRadius = stackedInnerRadius;
+                dougnutGeometry.PushOut = pushout;
+                dougnutGeometry.StartAngle = start + initialRotation;
+                dougnutGeometry.SweepAngle = end;
+                dougnutGeometry.CornerRadius = cornerRadius;
+                dougnutGeometry.InvertedCornerRadius = InvertedCornerRadius;
+                dougnutGeometry.RemoveOnCompleted = false;
+                if (start == initialRotation && end == completeAngle) dougnutGeometry.SweepAngle = completeAngle - 0.1f;
+
+                point.Context.HoverArea = new SemicircleHoverArea()
+                    .SetDimensions(cx, cy, start + initialRotation, start + initialRotation + end, md * 0.5f);
 
                 OnPointMeasured(point);
                 _ = toDeletePoints.Remove(point);
+
+                if (DataLabelsDrawableTask != null && point.PrimaryValue > 0)
+                {
+                    var label = (TLabel?)point.Context.Label;
+
+                    if (label == null)
+                    {
+                        var l = new TLabel { X = cx, Y = cy };
+
+                        _ = l.TransitionateProperties(nameof(l.X), nameof(l.Y))
+                            .WithAnimation(animation =>
+                                animation
+                                    .WithDuration(AnimationsSpeed ?? chart.AnimationsSpeed)
+                                    .WithEasingFunction(EasingFunction ?? chart.EasingFunction));
+
+                        l.CompleteAllTransitions();
+                        label = l;
+                        point.Context.Label = l;
+                        DataLabelsDrawableTask.AddGeometryToPaintTask(l);
+                    }
+
+                    label.Text = DataLabelsFormatter(point);
+                    label.TextSize = dls;
+                    label.Padding = DataLabelsPadding;
+
+                    if (DataLabelsPosition == PolarLabelsPosition.Start)
+                    {
+                        var a = start + initialRotation;
+                        a %= 360;
+                        if (a < 0) a += 360;
+                        var c = 90;
+
+                        if (a > 180) c = -90;
+
+                        label.HorizontalAlign = a > 180 ? Align.End : Align.Start;
+                        label.Rotation = a - c;
+                    }
+
+                    if (DataLabelsPosition == PolarLabelsPosition.End)
+                    {
+                        var a = start + initialRotation + end;
+                        a %= 360;
+                        if (a < 0) a += 360;
+                        var c = 90;
+
+                        if (a > 180) c = -90;
+
+                        label.HorizontalAlign = a > 180 ? Align.Start : Align.End;
+                        label.Rotation = a - c;
+                    }
+
+                    var labelPosition = GetLabelPolarPosition(
+                        cx, cy, ((w + relativeOuterRadius * 2) * 0.5f + stackedInnerRadius) * 0.5f, start + initialRotation, end,
+                        label.Measure(DataLabelsDrawableTask), DataLabelsPosition);
+
+                    label.X = labelPosition.X;
+                    label.Y = labelPosition.Y;
+                }
+
+                stackedInnerRadius = (w + relativeOuterRadius * 2) * 0.5f;
+                i++;
             }
 
             var u = new Scaler();
@@ -194,7 +368,7 @@ namespace LiveChartsCore
         }
 
         /// <summary>
-        /// Defines de default behaviour when a point is added to a state.
+        /// Defines the default behavior when a point is added to a state.
         /// </summary>
         /// <param name="visual">The visual.</param>
         /// <param name="chart">The chart.</param>
@@ -220,25 +394,8 @@ namespace LiveChartsCore
         {
             var context = new PaintContext<TDrawingContext>();
 
-            if (Fill != null)
-            {
-                var fillClone = Fill.CloneTask();
-                var visual = new TVisual
-                {
-                    X = 0,
-                    Y = 0,
-                    Height = (float)LegendShapeSize,
-                    Width = (float)LegendShapeSize,
-                    CenterX = (float)LegendShapeSize * 0.5f,
-                    CenterY = (float)LegendShapeSize * 0.5f,
-                    StartAngle = 0,
-                    SweepAngle = 359.9999f
-                };
-                fillClone.AddGeometyToPaintTask(visual);
-                _ = context.PaintTasks.Add(fillClone);
-            }
-
             var w = LegendShapeSize;
+            var sh = 0f;
             if (Stroke != null)
             {
                 var strokeClone = Stroke.CloneTask();
@@ -253,15 +410,36 @@ namespace LiveChartsCore
                     StartAngle = 0,
                     SweepAngle = 359.9999f
                 };
+                sh = strokeClone.StrokeThickness;
+                strokeClone.ZIndex = 1;
                 w += 2 * strokeClone.StrokeThickness;
-                strokeClone.AddGeometyToPaintTask(visual);
+                strokeClone.AddGeometryToPaintTask(visual);
                 _ = context.PaintTasks.Add(strokeClone);
+            }
+
+            if (Fill != null)
+            {
+                var fillClone = Fill.CloneTask();
+                var visual = new TVisual
+                {
+                    X = sh,
+                    Y = sh,
+                    Height = (float)LegendShapeSize,
+                    Width = (float)LegendShapeSize,
+                    CenterX = (float)LegendShapeSize * 0.5f,
+                    CenterY = (float)LegendShapeSize * 0.5f,
+                    StartAngle = 0,
+                    SweepAngle = 359.9999f
+                };
+                fillClone.AddGeometryToPaintTask(visual);
+                _ = context.PaintTasks.Add(fillClone);
             }
 
             context.Width = w;
             context.Height = w;
 
             paintContext = context;
+            OnPropertyChanged(nameof(DefaultPaintContext));
         }
 
         /// <summary>
@@ -299,8 +477,8 @@ namespace LiveChartsCore
                     nameof(visual.InnerRadius))
                 .WithAnimation(animation =>
                     animation
-                        .WithDuration(chart.AnimationsSpeed)
-                        .WithEasingFunction(chart.EasingFunction));
+                        .WithDuration(AnimationsSpeed ?? chart.AnimationsSpeed)
+                        .WithEasingFunction(EasingFunction ?? chart.EasingFunction));
         }
 
         /// <summary>
@@ -316,7 +494,60 @@ namespace LiveChartsCore
 
             visual.StartAngle += visual.SweepAngle;
             visual.SweepAngle = 0;
+            visual.CornerRadius = 0;
             visual.RemoveOnCompleted = true;
+
+            if (dataProvider == null) throw new Exception("Data provider not found");
+            dataProvider.DisposePoint(point);
+        }
+
+        /// <summary>
+        /// Gets the label polar position.
+        /// </summary>
+        /// <param name="centerX">The center x.</param>
+        /// <param name="centerY">The center y.</param>
+        /// <param name="radius">The radius.</param>
+        /// <param name="startAngle">The start angle.</param>
+        /// <param name="sweepAngle">The sweep angle.</param>
+        /// <param name="labelSize">Size of the label.</param>
+        /// <param name="position">The position.</param>
+        /// <returns></returns>
+        protected virtual PointF GetLabelPolarPosition(
+            float centerX,
+            float centerY,
+            float radius,
+            float startAngle,
+            float sweepAngle,
+            SizeF labelSize,
+            PolarLabelsPosition position)
+        {
+            const float toRadians = (float)(Math.PI / 180);
+            float angle = 0;
+
+            switch (position)
+            {
+                case PolarLabelsPosition.End:
+                    angle = startAngle + sweepAngle;
+                    break;
+                case PolarLabelsPosition.Start:
+                    angle = startAngle;
+                    break;
+                case PolarLabelsPosition.Middle:
+                    angle = (startAngle + sweepAngle) * 0.5f;
+                    break;
+                case PolarLabelsPosition.ChartCenter:
+                    return new PointF(centerX, centerY);
+                default:
+                    break;
+            }
+
+            angle %= 360;
+            if (angle < 0) angle += 360;
+            angle *= toRadians;
+
+            return new PointF(
+                 (float)(centerX + Math.Cos(angle) * radius),
+                 (float)(centerY + Math.Sin(angle) * radius));
         }
 
         /// <summary>

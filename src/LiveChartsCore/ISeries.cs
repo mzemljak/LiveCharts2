@@ -64,6 +64,23 @@ namespace LiveChartsCore
         IEnumerable? Values { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether this instance is visible.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is visible; otherwise, <c>false</c>.
+        /// </value>
+        bool IsVisible { get; set; }
+
+        /// <summary>
+        /// Gets or sets the data padding, both coordinates (X and Y) from 0 to 1, where 0 is nothing and 1 is the axis tick
+        /// (the separation between every label).
+        /// </summary>
+        /// <value>
+        /// The data padding.
+        /// </value>
+        PointF DataPadding { get; set; }
+
+        /// <summary>
         /// Gets or sets the z index position.
         /// </summary>
         /// <value>
@@ -77,11 +94,29 @@ namespace LiveChartsCore
         double Pivot { get; set; }
 
         /// <summary>
-        /// Gets or sets the tooltip label formatter, this function will build the label when a point in this series 
-        /// is shown inside a tooltip.
+        /// Gets or sets the animations speed, if this property is null, the
+        /// <see cref="Chart{TDrawingContext}.AnimationsSpeed"/> property will be used.
         /// </summary>
         /// <value>
-        /// The tooltip label formatter.
+        /// The animations speed.
+        /// </value>
+        TimeSpan? AnimationsSpeed { get; set; }
+
+        /// <summary>
+        /// Gets or sets the easing function to animate the series, if this property is null, the
+        /// <see cref="Chart{TDrawingContext}.EasingFunction"/> property will be used.
+        /// </summary>
+        /// <value>
+        /// The easing function.
+        /// </value>
+        Func<float, float>? EasingFunction { get; set; }
+
+        /// <summary>
+        /// Gets or sets the tool tip label formatter, this function will build the label when a point in this series 
+        /// is shown inside a tool tip.
+        /// </summary>
+        /// <value>
+        /// The tool tip label formatter.
         /// </value>
         Func<ChartPoint, string> TooltipLabelFormatter { get; set; }
 
@@ -95,6 +130,11 @@ namespace LiveChartsCore
         Func<ChartPoint, string> DataLabelsFormatter { get; set; }
 
         /// <summary>
+        /// Occurs before the series is disposed.
+        /// </summary>
+        event Action<ISeries>? Disposing;
+
+        /// <summary>
         /// Gets a <see cref="ChartPoint"/> array with the points used to generate the plot.
         /// </summary>
         /// <param name="chart">the chart</param>
@@ -106,7 +146,7 @@ namespace LiveChartsCore
         /// to the chart's <see cref="TooltipFindingStrategy"/> property.
         /// </summary>
         /// <param name="chart">the chart</param>
-        /// <param name="pointerPosition">the poiinter position</param>
+        /// <param name="pointerPosition">the pointer position</param>
         /// <returns></returns>
         IEnumerable<TooltipPoint> FindPointsNearTo(IChart chart, PointF pointerPosition);
 
@@ -123,6 +163,11 @@ namespace LiveChartsCore
         /// <param name="chartPoint"></param>
         /// <param name="state"></param>
         void RemovePointFromState(ChartPoint chartPoint, string state);
+
+        /// <summary>
+        /// Clears the visuals in the cache and re-starts animations.
+        /// </summary>
+        void RestartAnimations();
 
         /// <summary>
         /// Deletes the series from the user interface.

@@ -96,9 +96,9 @@ The following topics will work on any platform.
 - [x] ~~Create the Axis class, an object that defines the data range in a plane (x or y) and scale a chart point to the screen based on the data range in the axis~~
 - [x] ~~Draw Axes in the UI~~
 - [x] ~~Multiple axes in the same chart~~
-- [ ] Axis labels rotation
-- [ ] Date scaled Axes
-- [ ] Logaritmic scaled Axes
+- [x] ~~Axis labels rotation~~
+- [x] ~~Date scaled Axes~~
+- [x] ~~Logaritmic scaled Axes~~
 - [ ] Allow the chart to have external elements in the UI ([visual elements](https://lvcharts.net/App/examples/v1/wpf/Visual%20Elements))
 - [x] ~~Create the Series class, an object that is able to draw a data set in the screen in diferent ways (defined by the class that inherits from this) a series must be flexible, practically anything was plotted, could be changed by the user, it must also animate when the data changes~~
 
@@ -137,4 +137,4 @@ The following topics will work on any platform.
   - [x] ~~Draw a basic pie slice geometry, where the corners could be rounded and you can define a "wedge" property so we can make a [doughnut](https://lvcharts.net/App/examples/v1/wpf/Doughnut%20Chart)~~
   - [x] ~~allow data labels and make them cutomizable~~
   
-- [ ] Solid Gauges
+- [x] ~~Solid Gauges~~

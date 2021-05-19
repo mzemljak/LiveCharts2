@@ -24,7 +24,6 @@ using LiveChartsCore.Drawing;
 using LiveChartsCore.Drawing.Common;
 using LiveChartsCore.Motion;
 using LiveChartsCore.SkiaSharpView.Drawing;
-using LiveChartsCore.SkiaSharpView.Motion;
 using SkiaSharp;
 using System;
 using System.Collections.Generic;
@@ -36,18 +35,18 @@ namespace LiveChartsCore.SkiaSharpView.Painting
     /// <inheritdoc cref="IDrawableTask{TDrawingContext}" />
     public abstract class PaintTask : Animatable, IDisposable, IDrawableTask<SkiaSharpDrawingContext>
     {
+        private HashSet<IDrawable<SkiaSharpDrawingContext>> _geometries = new();
+        private IDrawable<SkiaSharpDrawingContext>[]? _actualGeometries = null;
+
         /// <summary>
         /// The skia paint
         /// </summary>
-        protected SKPaint skiaPaint;
+        protected SKPaint? skiaPaint;
 
         /// <summary>
         /// The stroke width transition
         /// </summary>
         protected FloatMotionProperty strokeWidthTransition;
-        private HashSet<IDrawable<SkiaSharpDrawingContext>> geometries = new HashSet<IDrawable<SkiaSharpDrawingContext>>();
-        private IDrawable<SkiaSharpDrawingContext>[] actualGeometries = null;
-        private readonly ColorMotionProperty colorTransition;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PaintTask"/> class.
@@ -55,18 +54,15 @@ namespace LiveChartsCore.SkiaSharpView.Painting
         public PaintTask()
         {
             strokeWidthTransition = RegisterMotionProperty(new FloatMotionProperty(nameof(StrokeThickness), 0f));
-            colorTransition = RegisterMotionProperty(new ColorMotionProperty(nameof(Color), new SKColor()));
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PaintTask"/> class.
         /// </summary>
         /// <param name="color">The color.</param>
-        public PaintTask(SKColor color)
+        public PaintTask(SKColor color) : this()
         {
-            strokeWidthTransition = RegisterMotionProperty(new FloatMotionProperty(nameof(StrokeThickness), 0f));
-            colorTransition = RegisterMotionProperty(
-                new ColorMotionProperty(nameof(Color), new SKColor(color.Red, color.Green, color.Blue, color.Alpha)));
+            Color = color;
         }
 
         double IDrawableTask<SkiaSharpDrawingContext>.ZIndex { get; set; }
@@ -102,7 +98,7 @@ namespace LiveChartsCore.SkiaSharpView.Painting
         /// <value>
         /// The color.
         /// </value>
-        public SKColor Color { get => colorTransition.GetMovement(this); set => colorTransition.SetMovement(value, this); }
+        public SKColor Color { get; set; }
 
         /// <summary>
         /// Gets or sets the clip rectangle.
@@ -112,13 +108,21 @@ namespace LiveChartsCore.SkiaSharpView.Painting
         /// </value>
         public RectangleF ClipRectangle { get; set; } = RectangleF.Empty;
 
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance is paused.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if this instance is paused; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsPaused { get; set; }
+
         /// <inheritdoc cref="IDrawableTask{TDrawingContext}.InitializeTask(TDrawingContext)" />
         public abstract void InitializeTask(SkiaSharpDrawingContext drawingContext);
 
         /// <inheritdoc cref="IDrawableTask{TDrawingContext}.GetGeometries" />
         public IEnumerable<IDrawable<SkiaSharpDrawingContext>> GetGeometries()
         {
-            var g = actualGeometries ?? (actualGeometries = geometries.ToArray());
+            var g = _actualGeometries ??= _geometries.ToArray();
             foreach (var item in g)
             {
                 yield return item;
@@ -128,29 +132,43 @@ namespace LiveChartsCore.SkiaSharpView.Painting
         /// <inheritdoc cref="IDrawableTask{TDrawingContext}.SetGeometries(HashSet{IDrawable{TDrawingContext}})" />
         public void SetGeometries(HashSet<IDrawable<SkiaSharpDrawingContext>> geometries)
         {
-            this.geometries = geometries;
-            actualGeometries = null;
+            _geometries = geometries;
+            _actualGeometries = null;
             Invalidate();
         }
 
-        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.AddGeometyToPaintTask(IDrawable{TDrawingContext})" />
-        public void AddGeometyToPaintTask(IDrawable<SkiaSharpDrawingContext> geometry)
+        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.AddGeometryToPaintTask(IDrawable{TDrawingContext})" />
+        public void AddGeometryToPaintTask(IDrawable<SkiaSharpDrawingContext> geometry)
         {
-            _ = geometries.Add(geometry);
-            actualGeometries = null;
+            _ = _geometries.Add(geometry);
+            _actualGeometries = null;
             Invalidate();
         }
 
         /// <inheritdoc cref="IDrawableTask{TDrawingContext}.RemoveGeometryFromPainTask(IDrawable{TDrawingContext})" />
         public void RemoveGeometryFromPainTask(IDrawable<SkiaSharpDrawingContext> geometry)
         {
-            _ = geometries.Remove(geometry);
-            actualGeometries = null;
+            _ = _geometries.Remove(geometry);
+            _actualGeometries = null;
+            Invalidate();
+        }
+
+        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.ClearGeometriesFromPaintTask"/>
+        public void ClearGeometriesFromPaintTask()
+        {
+            _geometries.Clear();
+            _actualGeometries = null;
             Invalidate();
         }
 
         /// <inheritdoc cref="IDrawableTask{TDrawingContext}.CloneTask" />
         public abstract IDrawableTask<SkiaSharpDrawingContext> CloneTask();
+
+        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.SetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
+        public abstract void SetOpacity(SkiaSharpDrawingContext context, IGeometry<SkiaSharpDrawingContext> geometry);
+
+        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.SetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
+        public abstract void ResetOpacity(SkiaSharpDrawingContext context, IGeometry<SkiaSharpDrawingContext> geometry);
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.

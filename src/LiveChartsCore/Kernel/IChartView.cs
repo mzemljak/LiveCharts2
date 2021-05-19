@@ -23,6 +23,7 @@
 using LiveChartsCore.Drawing;
 using LiveChartsCore.Measure;
 using System;
+using System.Collections.Generic;
 
 namespace LiveChartsCore.Kernel
 {
@@ -31,6 +32,14 @@ namespace LiveChartsCore.Kernel
     /// </summary>
     public interface IChartView
     {
+        /// <summary>
+        /// Sets the back color of the control.
+        /// </summary>
+        /// <value>
+        /// The color of the back.
+        /// </value>
+        System.Drawing.Color BackColor { get; set; }
+
         /// <summary>
         /// Gets the size of the control.
         /// </summary>
@@ -63,7 +72,7 @@ namespace LiveChartsCore.Kernel
         /// <value>
         /// The easing function.
         /// </value>
-        Func<float, float> EasingFunction { get; set; }
+        Func<float, float>? EasingFunction { get; set; }
 
         /// <summary>
         /// Gets or sets the legend position.
@@ -106,6 +115,29 @@ namespace LiveChartsCore.Kernel
         where TDrawingContext : DrawingContext
     {
         /// <summary>
+        /// Occurs before the chart is measured, this is the first step before the chart updates.
+        /// </summary>
+        event ChartEventHandler<TDrawingContext>? Measuring;
+
+        /// <summary>
+        /// Occurs when the chart started an update, just when the drawing loop started.
+        /// </summary>
+        event ChartEventHandler<TDrawingContext>? UpdateStarted;
+
+        /// <summary>
+        /// Occurs when a chart update finished, just when the drawing loop finished.
+        /// </summary>
+        event ChartEventHandler<TDrawingContext>? UpdateFinished;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the automatic updates are enabled.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if automatic update are enabled; otherwise, <c>false</c>.
+        /// </value>
+        bool AutoUpdateEnaled { get; set; }
+
+        /// <summary>
         /// Gets the core canvas.
         /// </summary>
         /// <value>
@@ -136,5 +168,16 @@ namespace LiveChartsCore.Kernel
         /// The point states.
         /// </value>
         PointStatesDictionary<TDrawingContext> PointStates { get; set; }
+
+        /// <summary>
+        /// Shows the tool tip based on the given points.
+        /// </summary>
+        /// <param name="points">The points.</param>
+        void ShowTooltip(IEnumerable<TooltipPoint> points);
+
+        /// <summary>
+        /// Hides the tool tip.
+        /// </summary>
+        void HideTooltip();
     }
 }

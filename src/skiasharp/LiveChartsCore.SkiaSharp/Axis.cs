@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using LiveChartsCore.Kernel;
 using LiveChartsCore.SkiaSharpView.Drawing;
 using LiveChartsCore.SkiaSharpView.Drawing.Geometries;
 
@@ -34,10 +35,10 @@ namespace LiveChartsCore.SkiaSharpView
         public Axis()
         {
             if (!LiveCharts.IsConfigured) LiveCharts.Configure(LiveChartsSkiaSharp.DefaultPlatformBuilder);
-            var stylesBuilder = LiveCharts.CurrentSettings.GetStylesBuilder<SkiaSharpDrawingContext>();
-            var initializer = stylesBuilder.GetInitializer();
+            var stylesBuilder = LiveCharts.CurrentSettings.GetTheme<SkiaSharpDrawingContext>();
+            var initializer = stylesBuilder.GetVisualsInitializer();
 
-            initializer.ConstructAxis(this);
+            initializer.ApplyStyleToAxis(this);
         }
     }
 }

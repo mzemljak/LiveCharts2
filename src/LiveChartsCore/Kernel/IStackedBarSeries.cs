@@ -25,13 +25,29 @@ using LiveChartsCore.Drawing;
 namespace LiveChartsCore.Kernel
 {
     /// <summary>
-    /// Defiens a stacked bar series.
+    /// Defines a stacked bar series.
     /// </summary>
     /// <typeparam name="TDrawingContext">The type of the drawing context.</typeparam>
     /// <seealso cref="IDrawableSeries{TDrawingContext}" />
     public interface IStackedBarSeries<TDrawingContext> : IDrawableSeries<TDrawingContext>
         where TDrawingContext : DrawingContext
     {
+        /// <summary>
+        /// Gets or sets the rx, the radius used in the x axis to round the corners of each column, it goes from 0 to 1.
+        /// </summary>
+        /// <value>
+        /// The rx.
+        /// </value>
+        double Rx { get; set; }
+
+        /// <summary>
+        /// Gets or sets the ry, the radius used in the y axis to round the corners of each column, it goes from 0 to 1.
+        /// </summary>
+        /// <value>
+        /// The ry.
+        /// </value>
+        double Ry { get; set; }
+
         /// <summary>
         /// Gets or sets the maximum width of the bar.
         /// </summary>

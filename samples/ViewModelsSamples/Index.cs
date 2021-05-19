@@ -4,6 +4,10 @@
     {
         public static string[] Samples = new[]
         {
+            "Design/LinearGradients",
+            "Design/RadialGradients",
+            "Design/StrokeDashArray",
+
             "Lines/Basic",
             "Lines/AutoUpdate",
             "Lines/Straight",
@@ -29,10 +33,13 @@
 
             "Pies/Basic",
             "Pies/AutoUpdate",
+            "Pies/Processing",
             "Pies/Doughnut",
             "Pies/Pushout",
             "Pies/Custom",
             "Pies/NightingaleRose",
+            "Pies/Gauges",
+            //"Pies/Gauge",
 
             "Scatter/Basic",
             "Scatter/AutoUpdate",
@@ -41,9 +48,15 @@
             "Axes/ColorsAndPosition",
             "Axes/LabelsFormat",
             "Axes/NamedLabels",
+            "Axes/LabelsRotation",
+            "Axes/Multiple",
+            "Axes/DateTimeScaled",
+            "Axes/Logaritmic",
 
             "General/Tooltips",
             "General/Legends",
+            "General/Animations",
+            "General/Visibility",
             "General/TemplatedTooltips",
             "General/TemplatedLegends",
             "General/UserDefinedTypes",

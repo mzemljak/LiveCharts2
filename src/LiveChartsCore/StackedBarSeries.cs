@@ -22,12 +22,11 @@
 
 using LiveChartsCore.Kernel;
 using LiveChartsCore.Drawing;
-using System;
 
 namespace LiveChartsCore
 {
     /// <summary>
-    /// Defiens the stacked bar series class/
+    /// Defines the stacked bar series class.
     /// </summary>
     /// <typeparam name="TModel">The type of the model.</typeparam>
     /// <typeparam name="TVisual">The type of the visual.</typeparam>
@@ -37,15 +36,10 @@ namespace LiveChartsCore
     /// <seealso cref="IStackedBarSeries{TDrawingContext}" />
     public abstract class StackedBarSeries<TModel, TVisual, TLabel, TDrawingContext>
         : CartesianSeries<TModel, TVisual, TLabel, TDrawingContext>, IStackedBarSeries<TDrawingContext>
-        where TVisual : class, ISizedVisualChartPoint<TDrawingContext>, new()
+        where TVisual : class, IRoundedRectangleChartPoint<TDrawingContext>, new()
         where TDrawingContext : DrawingContext
         where TLabel : class, ILabelGeometry<TDrawingContext>, new()
     {
-        /// <summary>
-        /// The elastic function
-        /// </summary>
-        protected static Func<float, float> elasticFunction = EasingFunctions.BuildCustomElasticOut(1.5f, 0.60f);
-
         /// <summary>
         /// The stack group
         /// </summary>
@@ -77,6 +71,12 @@ namespace LiveChartsCore
         /// </value>
         public double MaxBarWidth { get; set; } = 50;
 
+        /// <inheritdoc cref="IStackedBarSeries{TDrawingContext}.Rx"/>
+        public double Rx { get; set; }
+
+        /// <inheritdoc cref="IStackedBarSeries{TDrawingContext}.Ry"/>
+        public double Ry { get; set; }
+
         /// <summary>
         /// Called when the paint context changed.
         /// </summary>
@@ -84,15 +84,8 @@ namespace LiveChartsCore
         {
             var context = new PaintContext<TDrawingContext>();
 
-            if (Fill != null)
-            {
-                var fillClone = Fill.CloneTask();
-                var visual = new TVisual { X = 0, Y = 0, Height = (float)LegendShapeSize, Width = (float)LegendShapeSize };
-                fillClone.AddGeometyToPaintTask(visual);
-                _ = context.PaintTasks.Add(fillClone);
-            }
-
             var w = LegendShapeSize;
+            var sh = 0f;
             if (Stroke != null)
             {
                 var strokeClone = Stroke.CloneTask();
@@ -103,15 +96,26 @@ namespace LiveChartsCore
                     Height = (float)LegendShapeSize,
                     Width = (float)LegendShapeSize
                 };
+                sh = strokeClone.StrokeThickness;
+                strokeClone.ZIndex = 1;
                 w += 2 * strokeClone.StrokeThickness;
-                strokeClone.AddGeometyToPaintTask(visual);
+                strokeClone.AddGeometryToPaintTask(visual);
                 _ = context.PaintTasks.Add(strokeClone);
+            }
+
+            if (Fill != null)
+            {
+                var fillClone = Fill.CloneTask();
+                var visual = new TVisual { X = sh, Y = sh, Height = (float)LegendShapeSize, Width = (float)LegendShapeSize };
+                fillClone.AddGeometryToPaintTask(visual);
+                _ = context.PaintTasks.Add(fillClone);
             }
 
             context.Width = w;
             context.Height = w;
 
             paintContext = context;
+            OnPropertyChanged(nameof(DefaultPaintContext));
         }
 
         /// <summary>

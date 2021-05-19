@@ -34,15 +34,18 @@ namespace LiveChartsCore.Kernel
     public class DataProvider<TModel, TDrawingContext>
         where TDrawingContext : DrawingContext
     {
-        /// <summary>
-        /// The by value visual map.
-        /// </summary>
-        protected readonly Dictionary<int, ChartPoint> byValueVisualMap = new();
+        private readonly Dictionary<int, ChartPoint> _byValueVisualMap = new();
+        private readonly Dictionary<TModel, ChartPoint> _byReferenceVisualMap = new();
+        private readonly bool _isValueType = false;
 
         /// <summary>
-        /// The by reference visual map.
+        /// Initializes a new instance of the <see cref="DataProvider{TModel, TDrawingContext}"/> class.
         /// </summary>
-        protected readonly Dictionary<TModel, ChartPoint> byReferenceVisualMap = new();
+        public DataProvider()
+        {
+            var t = typeof(TModel);
+            _isValueType = t.IsValueType;
+        }
 
         /// <summary>
         /// Fetches the the points for the specified series.
@@ -54,18 +57,15 @@ namespace LiveChartsCore.Kernel
         {
             if (series.Values == null) yield break;
 
-            var t = typeof(TModel);
-            var isValueType = t.IsValueType;
-
             var mapper = series.Mapping ?? LiveCharts.CurrentSettings.GetMap<TModel>();
             var index = 0;
 
-            if (isValueType)
+            if (_isValueType)
             {
                 foreach (var item in series.Values)
                 {
-                    if (!byValueVisualMap.TryGetValue(index, out var cp))
-                        byValueVisualMap[index] = cp = new ChartPoint(chart.View, series);
+                    if (!_byValueVisualMap.TryGetValue(index, out var cp))
+                        _byValueVisualMap[index] = cp = new ChartPoint(chart.View, series);
 
                     cp.Context.Index = index++;
                     cp.Context.DataSource = item;
@@ -79,8 +79,8 @@ namespace LiveChartsCore.Kernel
             {
                 foreach (var item in series.Values)
                 {
-                    if (!byReferenceVisualMap.TryGetValue(item, out var cp))
-                        byReferenceVisualMap[item] = cp = new ChartPoint(chart.View, series);
+                    if (!_byReferenceVisualMap.TryGetValue(item, out var cp))
+                        _byReferenceVisualMap[item] = cp = new ChartPoint(chart.View, series);
 
                     cp.Context.Index = index++;
                     cp.Context.DataSource = item;
@@ -92,7 +92,25 @@ namespace LiveChartsCore.Kernel
         }
 
         /// <summary>
-        /// Gets the cartesian bounds.
+        /// Disposes a given point.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <returns></returns>
+        public void DisposePoint(ChartPoint point)
+        {
+            if (_isValueType)
+            {
+                _ = _byValueVisualMap.Remove(point.Context.Index);
+            }
+            else
+            {
+                if (point.Context.DataSource == null) return;
+                _ = _byReferenceVisualMap.Remove((TModel)point.Context.DataSource);
+            }
+        }
+
+        /// <summary>
+        /// Gets the Cartesian bounds.
         /// </summary>
         /// <param name="chart">The chart.</param>
         /// <param name="series">The series.</param>
@@ -113,6 +131,7 @@ namespace LiveChartsCore.Kernel
             var yMax = y.MaxLimit ?? float.MaxValue;
 
             var bounds = new DimensionalBounds();
+            ChartPoint? previous = null;
             foreach (var point in series.Fetch(chart))
             {
                 var primary = point.PrimaryValue;
@@ -121,16 +140,26 @@ namespace LiveChartsCore.Kernel
 
                 if (stack != null) primary = stack.StackPoint(point);
 
-                _ = bounds.PrimaryBounds.AppendValue(primary);
-                _ = bounds.SecondaryBounds.AppendValue(secondary);
-                _ = bounds.TertiaryBounds.AppendValue(tertiary);
+                bounds.PrimaryBounds.AppendValue(primary);
+                bounds.SecondaryBounds.AppendValue(secondary);
+                bounds.TertiaryBounds.AppendValue(tertiary);
 
                 if (primary >= yMin && primary <= yMax && secondary >= xMin && secondary <= xMax)
                 {
-                    _ = bounds.VisiblePrimaryBounds.AppendValue(primary);
-                    _ = bounds.VisibleSecondaryBounds.AppendValue(secondary);
-                    _ = bounds.VisibleTertiaryBounds.AppendValue(tertiary);
+                    bounds.VisiblePrimaryBounds.AppendValue(primary);
+                    bounds.VisibleSecondaryBounds.AppendValue(secondary);
+                    bounds.VisibleTertiaryBounds.AppendValue(tertiary);
                 }
+
+                if (previous != null)
+                {
+                    var dx = Math.Abs(previous.SecondaryValue - point.SecondaryValue);
+                    var dy = Math.Abs(previous.PrimaryValue - point.PrimaryValue);
+                    if (dx < bounds.MinDeltaSecondary) bounds.MinDeltaSecondary = dx;
+                    if (dy < bounds.MinDeltaPrimary) bounds.MinDeltaPrimary = dy;
+                }
+
+                previous = point;
             }
 
             return bounds;
@@ -152,12 +181,33 @@ namespace LiveChartsCore.Kernel
             foreach (var point in series.Fetch(chart))
             {
                 _ = stack.StackPoint(point);
-                _ = bounds.PrimaryBounds.AppendValue(point.PrimaryValue);
-                _ = bounds.SecondaryBounds.AppendValue(point.SecondaryValue);
-                _ = bounds.TertiaryBounds.AppendValue(series.Pushout > series.HoverPushout ? series.Pushout : series.HoverPushout);
+                bounds.PrimaryBounds.AppendValue(point.PrimaryValue);
+                bounds.SecondaryBounds.AppendValue(point.SecondaryValue);
+                bounds.TertiaryBounds.AppendValue(series.Pushout > series.HoverPushout ? series.Pushout : series.HoverPushout);
             }
 
             return bounds;
+        }
+
+        /// <summary>
+        /// Clears the visuals in the cache.
+        /// </summary>
+        /// <returns></returns>
+        public virtual void RestartVisuals()
+        {
+            foreach (var item in _byReferenceVisualMap)
+            {
+                if (item.Value.Context.Visual is not IAnimatable visual) continue;
+                visual.RemoveTransitions();
+            }
+            _byReferenceVisualMap.Clear();
+
+            foreach (var item in _byValueVisualMap)
+            {
+                if (item.Value.Context.Visual is not IAnimatable visual) continue;
+                visual.RemoveTransitions();
+            }
+            _byValueVisualMap.Clear();
         }
     }
 }

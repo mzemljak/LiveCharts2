@@ -47,8 +47,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// The core
         /// </summary>
         protected Chart<SkiaSharpDrawingContext>? core;
-        private readonly CollectionDeepObserver<ISeries> seriesObserver;
-        private Grid? grid;
+        private readonly CollectionDeepObserver<ISeries> _seriesObserver;
+        private Grid? _grid;
 
         #endregion
 
@@ -62,16 +62,16 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
             if (!LiveCharts.IsConfigured) LiveCharts.Configure(LiveChartsSkiaSharp.DefaultPlatformBuilder);
 
-            var stylesBuilder = LiveCharts.CurrentSettings.GetStylesBuilder<SkiaSharpDrawingContext>();
-            var initializer = stylesBuilder.GetInitializer();
+            var stylesBuilder = LiveCharts.CurrentSettings.GetTheme<SkiaSharpDrawingContext>();
+            var initializer = stylesBuilder.GetVisualsInitializer();
             if (stylesBuilder.CurrentColors == null || stylesBuilder.CurrentColors.Length == 0)
                 throw new Exception("Default colors are not valid");
-            initializer.ConstructChart(this);
+            initializer.ApplyStyleToChart(this);
 
             InitializeCore();
             SizeChanged += OnSizeChanged;
 
-            seriesObserver = new CollectionDeepObserver<ISeries>(
+            _seriesObserver = new CollectionDeepObserver<ISeries>(
                (object sender, NotifyCollectionChangedEventArgs e) =>
                {
                    if (core == null) return;
@@ -87,6 +87,11 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
             canvas.SkCanvasView.EnableTouchEvents = true;
             canvas.SkCanvasView.Touch += OnSkCanvasTouched;
+
+            if (core == null) throw new Exception("Core not found!");
+            core.Measuring += OnCoreMeasuring;
+            core.UpdateStarted += OnCoreUpdateStarted;
+            core.UpdateFinished += OnCoreUpdateFinished;
         }
 
         #region bindable properties
@@ -100,12 +105,33 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
                   (BindableObject o, object oldValue, object newValue) =>
                   {
                       var chart = (PieChart)o;
-                      var seriesObserver = chart.seriesObserver;
+                      var seriesObserver = chart._seriesObserver;
                       seriesObserver.Dispose((IEnumerable<ISeries>)oldValue);
                       seriesObserver.Initialize((IEnumerable<ISeries>)newValue);
                       if (chart.core == null) return;
                       MainThread.BeginInvokeOnMainThread(() => chart.core.Update());
                   });
+
+        /// <summary>
+        /// The initial rotation property
+        /// </summary>
+        public static readonly BindableProperty InitialRotationProperty =
+            BindableProperty.Create(
+                nameof(InitialRotation), typeof(double), typeof(CartesianChart), 0d, BindingMode.Default, null, OnBindablePropertyChanged);
+
+        /// <summary>
+        /// The maximum angle property
+        /// </summary>
+        public static readonly BindableProperty MaxAngleProperty =
+            BindableProperty.Create(
+                nameof(MaxAngle), typeof(double), typeof(CartesianChart), 360d, BindingMode.Default, null, OnBindablePropertyChanged);
+
+        /// <summary>
+        /// The total property
+        /// </summary>
+        public static readonly BindableProperty TotalProperty =
+            BindableProperty.Create(
+                nameof(Total), typeof(double?), typeof(CartesianChart), null, BindingMode.Default, null, OnBindablePropertyChanged);
 
         /// <summary>
         /// The draw margin property
@@ -252,27 +278,38 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         #endregion
 
+        #region events
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.Measuring" />
+        public event ChartEventHandler<SkiaSharpDrawingContext>? Measuring;
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.UpdateStarted" />
+        public event ChartEventHandler<SkiaSharpDrawingContext>? UpdateStarted;
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.UpdateFinished" />
+        public event ChartEventHandler<SkiaSharpDrawingContext>? UpdateFinished;
+
+        #endregion
+
         #region properties
 
-        PieChart<SkiaSharpDrawingContext> IPieChartView<SkiaSharpDrawingContext>.Core
+        System.Drawing.Color IChartView.BackColor
         {
-            get
-            {
-                return core == null || core == null ? throw new Exception("core not found") : (PieChart<SkiaSharpDrawingContext>)core;
-            }
+            get => Background is not SolidColorBrush b
+                    ? new System.Drawing.Color()
+                    : System.Drawing.Color.FromArgb(
+                        (int)(b.Color.A * 255), (int)(b.Color.R * 255), (int)(b.Color.G * 255), (int)(b.Color.B * 255));
+            set => Background = new SolidColorBrush(new c(value.R / 255, value.G / 255, value.B / 255, value.A / 255));
         }
 
-        SizeF IChartView.ControlSize
+        PieChart<SkiaSharpDrawingContext> IPieChartView<SkiaSharpDrawingContext>.Core =>
+            core == null ? throw new Exception("core not found") : (PieChart<SkiaSharpDrawingContext>)core;
+
+        SizeF IChartView.ControlSize => new()
         {
-            get
-            {
-                return new SizeF
-                {
-                    Width = (float)(Width * DeviceDisplay.MainDisplayInfo.Density),
-                    Height = (float)(Height * DeviceDisplay.MainDisplayInfo.Density)
-                };
-            }
-        }
+            Width = (float)(Width * DeviceDisplay.MainDisplayInfo.Density),
+            Height = (float)(Height * DeviceDisplay.MainDisplayInfo.Density)
+        };
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.CoreCanvas" />
         public MotionCanvas<SkiaSharpDrawingContext> CoreCanvas => canvas.CanvasCore;
@@ -281,48 +318,69 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         BindableObject IMobileChart.Legend => legend;
 
-        Grid IMobileChart.LayoutGrid => grid ??= this.FindByName<Grid>("gridLayout");
+        Grid IMobileChart.LayoutGrid => _grid ??= this.FindByName<Grid>("gridLayout");
 
         /// <inheritdoc cref="IChartView.DrawMargin" />
         public Margin? DrawMargin
         {
-            get { return (Margin)GetValue(DrawMarginProperty); }
-            set { SetValue(DrawMarginProperty, value); }
+            get => (Margin)GetValue(DrawMarginProperty);
+            set => SetValue(DrawMarginProperty, value);
         }
 
         /// <inheritdoc cref="IPieChartView{TDrawingContext}.Series" />
         public IEnumerable<ISeries> Series
         {
-            get { return (IEnumerable<ISeries>)GetValue(SeriesProperty); }
-            set { SetValue(SeriesProperty, value); }
+            get => (IEnumerable<ISeries>)GetValue(SeriesProperty);
+            set => SetValue(SeriesProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.InitialRotation" />
+        public double InitialRotation
+        {
+            get => (double)GetValue(InitialRotationProperty);
+            set => SetValue(InitialRotationProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.MaxAngle" />
+        public double MaxAngle
+        {
+            get => (double)GetValue(MaxAngleProperty);
+            set => SetValue(MaxAngleProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.Total" />
+        public double? Total
+        {
+            get => (double?)GetValue(TotalProperty);
+            set => SetValue(TotalProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.AnimationsSpeed" />
         public TimeSpan AnimationsSpeed
         {
-            get { return (TimeSpan)GetValue(AnimationsSpeedProperty); }
-            set { SetValue(AnimationsSpeedProperty, value); }
+            get => (TimeSpan)GetValue(AnimationsSpeedProperty);
+            set => SetValue(AnimationsSpeedProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.EasingFunction" />
         public Func<float, float> EasingFunction
         {
-            get { return (Func<float, float>)GetValue(EasingFunctionProperty); }
-            set { SetValue(AnimationsSpeedProperty, value); }
+            get => (Func<float, float>)GetValue(EasingFunctionProperty);
+            set => SetValue(AnimationsSpeedProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.LegendPosition" />
         public LegendPosition LegendPosition
         {
-            get { return (LegendPosition)GetValue(LegendPositionProperty); }
-            set { SetValue(LegendPositionProperty, value); }
+            get => (LegendPosition)GetValue(LegendPositionProperty);
+            set => SetValue(LegendPositionProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.LegendOrientation" />
         public LegendOrientation LegendOrientation
         {
-            get { return (LegendOrientation)GetValue(LegendOrientationProperty); }
-            set { SetValue(LegendOrientationProperty, value); }
+            get => (LegendOrientation)GetValue(LegendOrientationProperty);
+            set => SetValue(LegendOrientationProperty, value);
         }
 
         /// <summary>
@@ -333,8 +391,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public DataTemplate LegendTemplate
         {
-            get { return (DataTemplate)GetValue(LegendTemplateProperty); }
-            set { SetValue(LegendTemplateProperty, value); }
+            get => (DataTemplate)GetValue(LegendTemplateProperty);
+            set => SetValue(LegendTemplateProperty, value);
         }
 
         /// <summary>
@@ -345,8 +403,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public string LegendFontFamily
         {
-            get { return (string)GetValue(LegendFontFamilyProperty); }
-            set { SetValue(LegendFontFamilyProperty, value); }
+            get => (string)GetValue(LegendFontFamilyProperty);
+            set => SetValue(LegendFontFamilyProperty, value);
         }
 
         /// <summary>
@@ -357,8 +415,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public double LegendFontSize
         {
-            get { return (double)GetValue(LegendFontSizeProperty); }
-            set { SetValue(LegendFontSizeProperty, value); }
+            get => (double)GetValue(LegendFontSizeProperty);
+            set => SetValue(LegendFontSizeProperty, value);
         }
 
         /// <summary>
@@ -369,8 +427,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public c LegendTextColor
         {
-            get { return (c)GetValue(LegendTextColorProperty); }
-            set { SetValue(LegendTextColorProperty, value); }
+            get => (c)GetValue(LegendTextColorProperty);
+            set => SetValue(LegendTextColorProperty, value);
         }
 
         /// <summary>
@@ -381,8 +439,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public c LegendBackgroundColor
         {
-            get { return (c)GetValue(LegendBackgroundProperty); }
-            set { SetValue(LegendBackgroundProperty, value); }
+            get => (c)GetValue(LegendBackgroundProperty);
+            set => SetValue(LegendBackgroundProperty, value);
         }
 
         /// <summary>
@@ -393,8 +451,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public FontAttributes LegendFontAttributes
         {
-            get { return (FontAttributes)GetValue(LegendFontAttributesProperty); }
-            set { SetValue(LegendFontAttributesProperty, value); }
+            get => (FontAttributes)GetValue(LegendFontAttributesProperty);
+            set => SetValue(LegendFontAttributesProperty, value);
         }
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.Legend" />
@@ -403,15 +461,15 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <inheritdoc cref="IChartView.TooltipPosition" />
         public TooltipPosition TooltipPosition
         {
-            get { return (TooltipPosition)GetValue(TooltipPositionProperty); }
-            set { SetValue(TooltipPositionProperty, value); }
+            get => (TooltipPosition)GetValue(TooltipPositionProperty);
+            set => SetValue(TooltipPositionProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
         public TooltipFindingStrategy TooltipFindingStrategy
         {
-            get { return (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty); }
-            set { SetValue(TooltipFindingStrategyProperty, value); }
+            get => (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty);
+            set => SetValue(TooltipFindingStrategyProperty, value);
         }
 
         /// <summary>
@@ -422,8 +480,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public DataTemplate TooltipTemplate
         {
-            get { return (DataTemplate)GetValue(TooltipTemplateProperty); }
-            set { SetValue(TooltipTemplateProperty, value); }
+            get => (DataTemplate)GetValue(TooltipTemplateProperty);
+            set => SetValue(TooltipTemplateProperty, value);
         }
 
         /// <summary>
@@ -434,8 +492,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public string TooltipFontFamily
         {
-            get { return (string)GetValue(TooltipFontFamilyProperty); }
-            set { SetValue(TooltipFontFamilyProperty, value); }
+            get => (string)GetValue(TooltipFontFamilyProperty);
+            set => SetValue(TooltipFontFamilyProperty, value);
         }
 
         /// <summary>
@@ -446,8 +504,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public double TooltipFontSize
         {
-            get { return (double)GetValue(TooltipFontSizeProperty); }
-            set { SetValue(TooltipFontSizeProperty, value); }
+            get => (double)GetValue(TooltipFontSizeProperty);
+            set => SetValue(TooltipFontSizeProperty, value);
         }
 
         /// <summary>
@@ -458,8 +516,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public c TooltipTextColor
         {
-            get { return (c)GetValue(TooltipTextColorProperty); }
-            set { SetValue(TooltipTextColorProperty, value); }
+            get => (c)GetValue(TooltipTextColorProperty);
+            set => SetValue(TooltipTextColorProperty, value);
         }
 
         /// <summary>
@@ -470,8 +528,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public c TooltipBackgroundColor
         {
-            get { return (c)GetValue(TooltipBackgroundProperty); }
-            set { SetValue(TooltipBackgroundProperty, value); }
+            get => (c)GetValue(TooltipBackgroundProperty);
+            set => SetValue(TooltipBackgroundProperty, value);
         }
 
         /// <summary>
@@ -482,8 +540,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </value>
         public FontAttributes TooltipFontAttributes
         {
-            get { return (FontAttributes)GetValue(TooltipFontAttributesProperty); }
-            set { SetValue(TooltipFontAttributesProperty, value); }
+            get => (FontAttributes)GetValue(TooltipFontAttributesProperty);
+            set => SetValue(TooltipFontAttributesProperty, value);
         }
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.Tooltip" />
@@ -492,7 +550,26 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <inheritdoc cref="IChartView{TDrawingContext}.PointStates" />
         public PointStatesDictionary<SkiaSharpDrawingContext> PointStates { get; set; } = new();
 
+        /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
+        public bool AutoUpdateEnaled { get; set; } = true;
+
         #endregion
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.ShowTooltip(IEnumerable{TooltipPoint})"/>
+        public void ShowTooltip(IEnumerable<TooltipPoint> points)
+        {
+            if (tooltip == null || core == null) return;
+
+            ((IChartTooltip<SkiaSharpDrawingContext>)tooltip).Show(points, core);
+        }
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.HideTooltip"/>
+        public void HideTooltip()
+        {
+            if (tooltip == null || core == null) return;
+
+            ((IChartTooltip<SkiaSharpDrawingContext>)tooltip).Hide();
+        }
 
         /// <summary>
         /// Initializes the core.
@@ -526,9 +603,25 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         private void OnSkCanvasTouched(object? sender, SkiaSharp.Views.Forms.SKTouchEventArgs e)
         {
-            if (TooltipPosition == TooltipPosition.Hidden || core == null) return;
+            if (core == null) return;
+            if (TooltipPosition == TooltipPosition.Hidden) return;
             var location = new PointF(e.Location.X, e.Location.Y);
             ((IChartTooltip<SkiaSharpDrawingContext>)tooltip).Show(core.FindPointsNearTo(location), core);
+        }
+
+        private void OnCoreUpdateFinished(IChartView<SkiaSharpDrawingContext> chart)
+        {
+            UpdateFinished?.Invoke(this);
+        }
+
+        private void OnCoreUpdateStarted(IChartView<SkiaSharpDrawingContext> chart)
+        {
+            UpdateStarted?.Invoke(this);
+        }
+
+        private void OnCoreMeasuring(IChartView<SkiaSharpDrawingContext> chart)
+        {
+            Measuring?.Invoke(this);
         }
     }
 }

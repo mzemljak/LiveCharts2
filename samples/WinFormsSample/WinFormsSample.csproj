@@ -12,6 +12,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Axes\Logaritmic\View.cs" />
+    <Compile Update="Axes\DateTimeScaled\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Axes\Multiple\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Axes\LabelsRotation\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Axes\NamedLabels\View.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -46,6 +56,21 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Bars\Custom\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Design\StrokeDashArray\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Design\RadialGradients\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Design\LinearGradients\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="General\Animations\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="General\Visibility\View.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="General\Legends\View.cs">
@@ -88,6 +113,12 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Pies\AutoUpdate\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Pies\Gauges\View.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Pies\Processing\View.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Pies\Pushout\View.cs">

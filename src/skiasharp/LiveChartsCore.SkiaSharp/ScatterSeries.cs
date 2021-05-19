@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 using LiveChartsCore.Drawing;
+using LiveChartsCore.Kernel;
 using LiveChartsCore.SkiaSharpView.Drawing;
 using LiveChartsCore.SkiaSharpView.Drawing.Geometries;
 
@@ -32,7 +33,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// <typeparam name="TModel">
     /// The type of the points, you can use any type, the library already knows how to handle the most common numeric types,
     /// to use a custom type, you must register the type globally 
-    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, Kernel.ChartPoint})"/>)
+    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, ChartPoint})"/>)
     /// or at the series level 
     /// (<see cref="Series{TModel, TVisual, TLabel, TDrawingContext}.Mapping"/>).
     /// </typeparam>
@@ -47,7 +48,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// <typeparam name="TModel">
     /// The type of the points, you can use any type, the library already knows how to handle the most common numeric types,
     /// to use a custom type, you must register the type globally 
-    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, Kernel.ChartPoint})"/>)
+    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, ChartPoint})"/>)
     /// or at the series level 
     /// (<see cref="Series{TModel, TVisual, TLabel, TDrawingContext}.Mapping"/>).
     /// </typeparam>
@@ -66,7 +67,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// <typeparam name="TModel">
     /// The type of the points, you can use any type, the library already knows how to handle the most common numeric types,
     /// to use a custom type, you must register the type globally 
-    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, Kernel.ChartPoint})"/>)
+    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, ChartPoint})"/>)
     /// or at the series level 
     /// (<see cref="Series{TModel, TVisual, TLabel, TDrawingContext}.Mapping"/>).
     /// </typeparam>

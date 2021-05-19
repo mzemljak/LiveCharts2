@@ -66,6 +66,14 @@ namespace LiveChartsCore.Drawing
         float StrokeThickness { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether this instance is paused.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is paused; otherwise, <c>false</c>.
+        /// </value>
+        bool IsPaused { get; set; }
+
+        /// <summary>
         /// Gets or sets the clip rectangle.
         /// </summary>
         /// <value>
@@ -92,16 +100,35 @@ namespace LiveChartsCore.Drawing
         void SetGeometries(HashSet<IDrawable<TDrawingContext>> geometries);
 
         /// <summary>
-        /// Adds the geomety to paint task.
+        /// Adds the geometry to paint task.
         /// </summary>
         /// <param name="geometry">The geometry.</param>
-        void AddGeometyToPaintTask(IDrawable<TDrawingContext> geometry);
+        void AddGeometryToPaintTask(IDrawable<TDrawingContext> geometry);
 
         /// <summary>
         /// Removes the geometry from pain task.
         /// </summary>
         /// <param name="geometry">The geometry.</param>
         void RemoveGeometryFromPainTask(IDrawable<TDrawingContext> geometry);
+
+        /// <summary>
+        /// Removes all geometry from paint task.
+        /// </summary>
+        void ClearGeometriesFromPaintTask();
+
+        /// <summary>
+        /// Sets the opacity according to the given geometry.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="geometry">The geometry.</param>
+        void SetOpacity(TDrawingContext context, IGeometry<TDrawingContext> geometry);
+
+        /// <summary>
+        /// Resets the opacity.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="geometry">The geometry.</param>
+        void ResetOpacity(TDrawingContext context, IGeometry<TDrawingContext> geometry);
 
         /// <summary>
         /// Clones the task.

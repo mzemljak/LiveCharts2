@@ -22,7 +22,6 @@
 
 using LiveChartsCore.Kernel;
 using LiveChartsCore.Drawing;
-using System;
 
 namespace LiveChartsCore
 {
@@ -36,15 +35,10 @@ namespace LiveChartsCore
     /// <seealso cref="CartesianSeries{TModel, TVisual, TLabel, TDrawingContext}" />
     /// <seealso cref="IBarSeries{TDrawingContext}" />
     public abstract class BarSeries<TModel, TVisual, TLabel, TDrawingContext> : CartesianSeries<TModel, TVisual, TLabel, TDrawingContext>, IBarSeries<TDrawingContext>
-        where TVisual : class, ISizedVisualChartPoint<TDrawingContext>, new()
+        where TVisual : class, IRoundedRectangleChartPoint<TDrawingContext>, new()
         where TDrawingContext : DrawingContext
         where TLabel : class, ILabelGeometry<TDrawingContext>, new()
     {
-        /// <summary>
-        /// Gets the default elastic easing function.
-        /// </summary>
-        protected static Func<float, float> elasticFunction = EasingFunctions.BuildCustomElasticOut(1.5f, 0.60f);
-
         /// <summary>
         /// Initializes a new instance of the <see cref="BarSeries{TModel, TVisual, TLabel, TDrawingContext}"/> class.
         /// </summary>
@@ -55,11 +49,20 @@ namespace LiveChartsCore
             HoverState = LiveCharts.BarSeriesHoverKey;
         }
 
+        /// <inheritdoc cref="IBarSeries{TDrawingContext}.GroupPadding"/>
+        public double GroupPadding { get; set; } = 10;
+
         /// <inheritdoc cref="IBarSeries{TDrawingContext}.MaxBarWidth"/>
         public double MaxBarWidth { get; set; } = 50;
 
         /// <inheritdoc cref="IBarSeries{TDrawingContext}.IgnoresBarPosition"/>
         public bool IgnoresBarPosition { get; set; } = false;
+
+        /// <inheritdoc cref="IBarSeries{TDrawingContext}.Rx"/>
+        public double Rx { get; set; }
+
+        /// <inheritdoc cref="IBarSeries{TDrawingContext}.Ry"/>
+        public double Ry { get; set; }
 
         /// <summary>
         /// Called when the paint context changes.
@@ -68,15 +71,8 @@ namespace LiveChartsCore
         {
             var context = new PaintContext<TDrawingContext>();
 
-            if (Fill != null)
-            {
-                var fillClone = Fill.CloneTask();
-                var visual = new TVisual { X = 0, Y = 0, Height = (float)LegendShapeSize, Width = (float)LegendShapeSize };
-                fillClone.AddGeometyToPaintTask(visual);
-                _ = context.PaintTasks.Add(fillClone);
-            }
-
             var w = LegendShapeSize;
+            var sh = 0f;
             if (Stroke != null)
             {
                 var strokeClone = Stroke.CloneTask();
@@ -87,15 +83,27 @@ namespace LiveChartsCore
                     Height = (float)LegendShapeSize,
                     Width = (float)LegendShapeSize
                 };
+                sh = strokeClone.StrokeThickness;
+                strokeClone.ZIndex = 1;
                 w += 2 * strokeClone.StrokeThickness;
-                strokeClone.AddGeometyToPaintTask(visual);
+                strokeClone.AddGeometryToPaintTask(visual);
                 _ = context.PaintTasks.Add(strokeClone);
+            }
+
+            if (Fill != null)
+            {
+                var fillClone = Fill.CloneTask();
+                var visual = new TVisual { X = sh, Y = sh, Height = (float)LegendShapeSize, Width = (float)LegendShapeSize };
+                fillClone.AddGeometryToPaintTask(visual);
+                _ = context.PaintTasks.Add(fillClone);
             }
 
             context.Width = w;
             context.Height = w;
 
             paintContext = context;
+
+            OnPropertyChanged(nameof(DefaultPaintContext));
         }
     }
 }

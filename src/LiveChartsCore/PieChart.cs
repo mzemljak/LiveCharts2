@@ -130,14 +130,21 @@ namespace LiveChartsCore
             return _chartView.Series.SelectMany(series => series.FindPointsNearTo(this, pointerPosition));
         }
 
-        /// <inheritdoc cref="IChart.Update(bool)" />
-        public override void Update(bool throttling = true)
+        /// <inheritdoc cref="IChart.Update(ChartUpdateParams?)" />
+        public override void Update(ChartUpdateParams? chartUpdateParams = null)
         {
-            updateThrottler.Call();
-            //updateThrottler.LockTime = chartView.AnimationsSpeed;
-            //updateThrottler.TryRun();
-        }
+            if (chartUpdateParams == null) chartUpdateParams = new ChartUpdateParams();
 
+            if (chartUpdateParams.IsAutomaticUpdate && !View.AutoUpdateEnaled) return;
+
+            if (!chartUpdateParams.Throttling)
+            {
+                updateThrottler.ForceCall();
+                return;
+            }
+
+            updateThrottler.Call();
+        }
 
         /// <summary>
         /// Measures this chart.
@@ -145,83 +152,100 @@ namespace LiveChartsCore
         /// <returns></returns>
         protected override void Measure()
         {
-            if (Series == null)
+            lock (canvas.Sync)
             {
-                //chartView.CoreCanvas.ForEachGeometry((geometry, drawable) =>
-                //{
-                //    if (MeasuredDrawables.Contains(geometry)) return; // then the geometry was measured
+                InvokeOnMeasuring();
 
-                //    // at this point,the geometry is not required in the UI
-                //    geometry.RemoveOnCompleted = true;
-                //});
-                return;
-            }
+                MeasureWork = new object();
 
-            Canvas.MeasuredDrawables = new HashSet<IDrawable<TDrawingContext>>();
-            seriesContext = new SeriesContext<TDrawingContext>(Series);
+                viewDrawMargin = _chartView.DrawMargin;
+                controlSize = _chartView.ControlSize;
 
-            if (legend != null) legend.Draw(this);
+                Series = _chartView.Series
+                    .Where(x => x.IsVisible)
+                    .Cast<IPieSeries<TDrawingContext>>()
+                    .Select(series =>
+                    {
+                        _ = series.Fetch(this);
+                        return series;
+                    }).ToArray();
 
-            var stylesBuilder = LiveCharts.CurrentSettings.GetStylesBuilder<TDrawingContext>();
-            var initializer = stylesBuilder.GetInitializer();
-            if (stylesBuilder.CurrentColors == null || stylesBuilder.CurrentColors.Length == 0)
-                throw new Exception("Default colors are not valid");
+                legendPosition = _chartView.LegendPosition;
+                legendOrientation = _chartView.LegendOrientation;
+                legend = _chartView.Legend;
 
-            ValueBounds = new Bounds();
-            IndexBounds = new Bounds();
-            PushoutBounds = new Bounds();
-            foreach (var series in Series)
-            {
-                if (series.SeriesId == -1) series.SeriesId = _nextSeries++;
-                initializer.ResolveSeriesDefaults(stylesBuilder.CurrentColors, series);
+                tooltipPosition = _chartView.TooltipPosition;
+                tooltipFindingStrategy = _chartView.TooltipFindingStrategy;
+                tooltip = _chartView.Tooltip;
 
-                var seriesBounds = series.GetBounds(this);
+                animationsSpeed = _chartView.AnimationsSpeed;
+                easingFunction = _chartView.EasingFunction;
 
-                _ = ValueBounds.AppendValue(seriesBounds.PrimaryBounds.max);
-                _ = ValueBounds.AppendValue(seriesBounds.PrimaryBounds.min);
-                _ = IndexBounds.AppendValue(seriesBounds.SecondaryBounds.max);
-                _ = IndexBounds.AppendValue(seriesBounds.SecondaryBounds.min);
-                _ = PushoutBounds.AppendValue(seriesBounds.TertiaryBounds.max);
-                _ = PushoutBounds.AppendValue(seriesBounds.TertiaryBounds.min);
-            }
+                seriesContext = new SeriesContext<TDrawingContext>(Series);
 
-            if (viewDrawMargin == null)
-            {
-                var m = viewDrawMargin ?? new Margin();
-                SetDrawMargin(controlSize, m);
-                SetDrawMargin(controlSize, m);
-            }
+                if (legend != null) legend.Draw(this);
 
-            // invalid dimensions, probably the chart is too small
-            // or it is initializing in the UI and has no dimensions yet
-            if (drawMarginSize.Width <= 0 || drawMarginSize.Height <= 0) return;
+                var theme = LiveCharts.CurrentSettings.GetTheme<TDrawingContext>();
+                if (theme.CurrentColors == null || theme.CurrentColors.Length == 0)
+                    throw new Exception("Default colors are not valid");
+                var forceApply = ThemeId != LiveCharts.CurrentSettings.ThemeId && !IsFirstDraw;
 
-            var toDeleteSeries = new HashSet<ISeries>(_everMeasuredSeries);
-            foreach (var series in Series)
-            {
-                series.Measure(this);
-                _ = _everMeasuredSeries.Add(series);
-                _ = toDeleteSeries.Remove(series);
-
-                var deleted = false;
-                foreach (var item in series.DeletingTasks)
+                ValueBounds = new Bounds();
+                IndexBounds = new Bounds();
+                PushoutBounds = new Bounds();
+                foreach (var series in Series)
                 {
-                    canvas.RemovePaintTask(item);
-                    item.Dispose();
-                    deleted = true;
+                    if (series.SeriesId == -1) series.SeriesId = _nextSeries++;
+                    theme.ResolveSeriesDefaults(theme.CurrentColors, series, forceApply);
+
+                    var seriesBounds = series.GetBounds(this);
+
+                    ValueBounds.AppendValue(seriesBounds.PrimaryBounds.Max);
+                    ValueBounds.AppendValue(seriesBounds.PrimaryBounds.Min);
+                    IndexBounds.AppendValue(seriesBounds.SecondaryBounds.Max);
+                    IndexBounds.AppendValue(seriesBounds.SecondaryBounds.Min);
+                    PushoutBounds.AppendValue(seriesBounds.TertiaryBounds.Max);
+                    PushoutBounds.AppendValue(seriesBounds.TertiaryBounds.Min);
                 }
-                if (deleted) series.DeletingTasks.Clear();
+
+                if (viewDrawMargin == null)
+                {
+                    var m = viewDrawMargin ?? new Margin();
+                    SetDrawMargin(controlSize, m);
+                    SetDrawMargin(controlSize, m);
+                }
+
+                // invalid dimensions, probably the chart is too small
+                // or it is initializing in the UI and has no dimensions yet
+                if (drawMarginSize.Width <= 0 || drawMarginSize.Height <= 0) return;
+
+                var toDeleteSeries = new HashSet<ISeries>(_everMeasuredSeries);
+                foreach (var series in Series)
+                {
+                    series.Measure(this);
+                    _ = _everMeasuredSeries.Add(series);
+                    _ = toDeleteSeries.Remove(series);
+
+                    var deleted = false;
+                    foreach (var item in series.DeletingTasks)
+                    {
+                        canvas.RemovePaintTask(item);
+                        item.Dispose();
+                        deleted = true;
+                    }
+                    if (deleted) series.DeletingTasks.Clear();
+                }
+
+                foreach (var series in toDeleteSeries)
+                {
+                    series.Dispose();
+                    _ = _everMeasuredSeries.Remove(series);
+                }
+
+                InvokeOnUpdateStarted();
+                IsFirstDraw = false;
+                ThemeId = LiveCharts.CurrentSettings.ThemeId;
             }
-
-            foreach (var series in toDeleteSeries) { series.Delete(View); _ = _everMeasuredSeries.Remove(series); }
-
-            //chartView.CoreCanvas.ForEachGeometry((geometry, drawable) =>
-            //{
-            //    if (measuredDrawables.Contains(geometry)) return; // then the geometry was measured
-
-            //    // at this point,the geometry is not required in the UI
-            //    geometry.RemoveOnCompleted = true;
-            //});
 
             Canvas.Invalidate();
         }
@@ -232,41 +256,6 @@ namespace LiveChartsCore
         /// <returns></returns>
         protected override void UpdateThrottlerUnlocked()
         {
-            // before measure every element in the chart
-            // we copy the properties that might change while we are updating the chart
-            // this call should be thread safe
-            // ToDo: ensure it is thread safe...
-
-            viewDrawMargin = _chartView.DrawMargin;
-            controlSize = _chartView.ControlSize;
-
-            Series = _chartView.Series
-                .Cast<IPieSeries<TDrawingContext>>()
-                .Select(series =>
-                {
-                    // a good implementation of ISeries<T>
-                    // must use the measureWorker to identify
-                    // if the points are already fetched.
-
-                    // this way no matter if the Series.Values collection changes
-                    // the fetch method will always return the same collection for the
-                    // current measureWorker instance
-
-                    _ = series.Fetch(this);
-                    return series;
-                }).ToArray();
-
-            legendPosition = _chartView.LegendPosition;
-            legendOrientation = _chartView.LegendOrientation;
-            legend = _chartView.Legend; // ... this is a reference type.. this has no sense
-
-            tooltipPosition = _chartView.TooltipPosition;
-            tooltipFindingStrategy = _chartView.TooltipFindingStrategy;
-            tooltip = _chartView.Tooltip; //... no sense again...
-
-            animationsSpeed = _chartView.AnimationsSpeed;
-            easingFunction = _chartView.EasingFunction;
-
             Measure();
         }
     }

@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
 using System;
 
 namespace AvaloniaSample
@@ -13,19 +15,36 @@ namespace AvaloniaSample
 #if DEBUG
             this.AttachDevTools();
 #endif
-            Samples = ViewModelsSamples.Index.Samples;
-            DataContext = this;
+
+            DataContext = new MainWindowViewModel();
+            LoadContent("Home");
+
+            LiveCharts.Configure(settings =>
+                settings.
+                    AddDefaultMappers()
+                    .AddSkiaSharp()
+                    .AddLightTheme()
+
+                    // .., your custom settings here
+                    // .HasMap<Foo>( ... )
+
+                    );
         }
 
         private void OnPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
         {
-            var content = this.FindControl<ContentControl>("content");
-            var ctx = (sender as Border)?.DataContext as string;
-            if (ctx == null) throw new Exception("Sample not found");
-            content.Content = Activator.CreateInstance(null, $"AvaloniaSample.{ctx.Replace('/', '.')}.View")?.Unwrap();
+            if ((sender as Border)?.DataContext is not string ctx) throw new Exception("Sample not found");
+            LoadContent(ctx.Replace('/', '.'));
         }
 
-        public string[] Samples { get; set; }
+        private void LoadContent(string view)
+        {
+            var content = this.FindControl<ContentControl>("content");
+            content.Content = Activator.CreateInstance(null, $"AvaloniaSample.{view}.View")?.Unwrap();
+            if (content.Content is not Home.View homeView) return;
+            if (DataContext is not MainWindowViewModel dc) throw new Exception();
+            homeView.MainWindowVM = dc;
+        }
 
         private void InitializeComponent()
         {

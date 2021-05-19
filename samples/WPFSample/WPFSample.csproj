@@ -21,7 +21,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Axes\ColorsAndSeparators\View.xaml.cs">
+    <Compile Update="Axes\Logaritmic\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Axes\LabelsRotation\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Axes\DateTimeScaled\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Axes\Multiple\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Axes\ColorsAndPosition\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Axes\NamedLabels\View.xaml.cs">
@@ -57,6 +69,15 @@
     <Compile Update="Bars\Custom\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Design\StrokeDashArray\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Design\RadialGradients\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Design\LinearGradients\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="General\TemplatedLegends\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -66,6 +87,9 @@
     <Compile Update="General\Legends\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="General\Animations\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="General\Tooltips\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -73,6 +97,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="General\NullPoints\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="General\Visibility\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Lines\Area\View.xaml.cs">
@@ -94,6 +121,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Pies\AutoUpdate\View.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Pies\Processing\View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Pies\Pushout\View.xaml.cs">
@@ -132,7 +162,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Page Update="Axes\ColorsAndSeparators\View.xaml">
+    <Page Update="Axes\Logaritmic\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Axes\LabelsRotation\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Axes\DateTimeScaled\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Axes\Multiple\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Axes\ColorsAndPosition\View.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
     </Page>
@@ -180,6 +226,18 @@
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
     </Page>
+    <Page Update="Design\StrokeDashArray\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Design\RadialGradients\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Design\LinearGradients\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="General\TemplatedLegends\View.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
@@ -192,6 +250,10 @@
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
     </Page>
+    <Page Update="General\Animations\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="General\Tooltips\View.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
@@ -201,6 +263,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Update="General\NullPoints\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="General\Visibility\View.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
     </Page>
@@ -229,6 +295,13 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Update="Pies\AutoUpdate\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Pies\Gauges\View.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Pies\Processing\View.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       <SubType>Designer</SubType>
     </Page>

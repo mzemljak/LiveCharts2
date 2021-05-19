@@ -101,10 +101,18 @@ namespace LiveChartsCore.Kernel
         public RectangleF ClipRectangle { get; set; }
 
         /// <summary>
-        /// Adds the geomety to paint task.
+        /// Gets or sets a value indicating whether this instance is paused.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if this instance is paused; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsPaused { get; set; }
+
+        /// <summary>
+        /// Adds the geometry to paint task.
         /// </summary>
         /// <param name="geometry">The geometry.</param>
-        public void AddGeometyToPaintTask(IDrawable<TDrawingContext> geometry)
+        public void AddGeometryToPaintTask(IDrawable<TDrawingContext> geometry)
         {
 
         }
@@ -170,6 +178,13 @@ namespace LiveChartsCore.Kernel
         }
 
         /// <summary>
+        /// Removes all geometry from paint task.
+        /// </summary>
+        public void ClearGeometriesFromPaintTask()
+        {
+        }
+
+        /// <summary>
         /// Removes a property transition.
         /// </summary>
         /// <param name="propertyName">Name of the property.</param>
@@ -193,7 +208,7 @@ namespace LiveChartsCore.Kernel
         /// <param name="animation">The animation.</param>
         /// <param name="propertyName">Name of the property.</param>
         /// <exception cref="System.NotImplementedException"></exception>
-        public void SetPropertiesTransitions(Animation animation, params string[] propertyName)
+        public void SetPropertiesTransitions(Animation? animation, params string[] propertyName)
         {
             throw new System.NotImplementedException();
         }
@@ -203,6 +218,27 @@ namespace LiveChartsCore.Kernel
         /// </summary>
         /// <exception cref="System.NotImplementedException"></exception>
         public void CompleteAllTransitions()
+        {
+            throw new System.NotImplementedException();
+        }
+
+        /// <summary>
+        /// Removes all the current transitions.
+        /// </summary>
+        /// <exception cref="System.NotImplementedException"></exception>
+        public void RemoveTransitions()
+        {
+            throw new System.NotImplementedException();
+        }
+
+        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.SetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
+        public void SetOpacity(TDrawingContext context, IGeometry<TDrawingContext> geometry)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.ResetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
+        public void ResetOpacity(TDrawingContext context, IGeometry<TDrawingContext> geometry)
         {
             throw new System.NotImplementedException();
         }

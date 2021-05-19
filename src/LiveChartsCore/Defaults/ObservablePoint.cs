@@ -27,7 +27,7 @@ using System.Runtime.CompilerServices;
 namespace LiveChartsCore.Defaults
 {
     /// <summary>
-    /// Defines a point for he Cartesian coordinate system that implements <see cref="INotifyPropertyChanged"/>.
+    /// Defines a point for the Cartesian coordinate system that implements <see cref="INotifyPropertyChanged"/>.
     /// </summary>
     /// <seealso cref="INotifyPropertyChanged" />
     public class ObservablePoint : INotifyPropertyChanged

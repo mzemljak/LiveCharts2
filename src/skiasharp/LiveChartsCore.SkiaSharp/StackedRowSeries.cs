@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 using LiveChartsCore.Drawing;
+using LiveChartsCore.Kernel;
 using LiveChartsCore.SkiaSharpView.Drawing;
 using LiveChartsCore.SkiaSharpView.Drawing.Geometries;
 
@@ -32,11 +33,11 @@ namespace LiveChartsCore.SkiaSharpView
     /// <typeparam name="TModel">
     /// The type of the points, you can use any type, the library already knows how to handle the most common numeric types,
     /// to use a custom type, you must register the type globally 
-    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, Kernel.ChartPoint})"/>)
+    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, ChartPoint})"/>)
     /// or at the series level 
     /// (<see cref="Series{TModel, TVisual, TLabel, TDrawingContext}.Mapping"/>).
     /// </typeparam>
-    public class StackedRowSeries<TModel> : StackedRowSeries<TModel, RectangleGeometry, LabelGeometry>
+    public class StackedRowSeries<TModel> : StackedRowSeries<TModel, RoundedRectangleGeometry, LabelGeometry>
     {
     }
 
@@ -46,7 +47,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// <typeparam name="TModel">
     /// The type of the points, you can use any type, the library already knows how to handle the most common numeric types,
     /// to use a custom type, you must register the type globally 
-    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, Kernel.ChartPoint})"/>)
+    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, ChartPoint})"/>)
     /// or at the series level 
     /// (<see cref="Series{TModel, TVisual, TLabel, TDrawingContext}.Mapping"/>).
     /// </typeparam>
@@ -54,7 +55,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// The type of the geometry of every point of the series.
     /// </typeparam>
     public class StackedRowSeries<TModel, TVisual> : StackedRowSeries<TModel, TVisual, LabelGeometry>
-        where TVisual : class, ISizedVisualChartPoint<SkiaSharpDrawingContext>, new()
+        where TVisual : class, IRoundedRectangleChartPoint<SkiaSharpDrawingContext>, new()
     {
     }
 
@@ -64,7 +65,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// <typeparam name="TModel">
     /// The type of the points, you can use any type, the library already knows how to handle the most common numeric types,
     /// to use a custom type, you must register the type globally 
-    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, Kernel.ChartPoint})"/>)
+    /// (<see cref="LiveChartsSettings.HasMap{TModel}(System.Action{TModel, ChartPoint})"/>)
     /// or at the series level 
     /// (<see cref="Series{TModel, TVisual, TLabel, TDrawingContext}.Mapping"/>).
     /// </typeparam>
@@ -75,7 +76,7 @@ namespace LiveChartsCore.SkiaSharpView
     /// The type of the data label of every point.
     /// </typeparam>
     public class StackedRowSeries<TModel, TVisual, TLabel> : StackedRowSeries<TModel, TVisual, TLabel, SkiaSharpDrawingContext>
-        where TVisual : class, ISizedVisualChartPoint<SkiaSharpDrawingContext>, new()
+        where TVisual : class, IRoundedRectangleChartPoint<SkiaSharpDrawingContext>, new()
         where TLabel : class, ILabelGeometry<SkiaSharpDrawingContext>, new()
     {
         /// <summary>

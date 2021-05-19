@@ -11,20 +11,18 @@ namespace LiveChartsCore.UnitTesting.MockedObjects
 {
     public class TestCartesianChartView : ICartesianChartView<SkiaSharpDrawingContext>
     {
-        private readonly MotionCanvas<SkiaSharpDrawingContext> canvas = new();
-
         public TestCartesianChartView()
         {
             if (!LiveCharts.IsConfigured) LiveCharts.Configure(LiveChartsSkiaSharp.DefaultPlatformBuilder);
 
-            var stylesBuilder = LiveCharts.CurrentSettings.GetStylesBuilder<SkiaSharpDrawingContext>();
-            var initializer = stylesBuilder.GetInitializer();
+            var stylesBuilder = LiveCharts.CurrentSettings.GetTheme<SkiaSharpDrawingContext>();
+            var initializer = stylesBuilder.GetVisualsInitializer();
             if (stylesBuilder.CurrentColors == null || stylesBuilder.CurrentColors.Length == 0)
                 throw new Exception("Default colors are not valid");
-            initializer.ConstructChart(this);
+            initializer.ApplyStyleToChart(this);
 
             Core = new CartesianChart<SkiaSharpDrawingContext>(
-                this, LiveChartsSkiaSharp.DefaultPlatformBuilder, canvas);
+                this, LiveChartsSkiaSharp.DefaultPlatformBuilder, CoreCanvas);
         }
 
         public CartesianChart<SkiaSharpDrawingContext> Core { get; }
@@ -39,7 +37,7 @@ namespace LiveChartsCore.UnitTesting.MockedObjects
 
         public double ZoomingSpeed { get; set; }
 
-        public MotionCanvas<SkiaSharpDrawingContext> CoreCanvas => canvas;
+        public MotionCanvas<SkiaSharpDrawingContext> CoreCanvas { get; } = new();
 
         public IChartLegend<SkiaSharpDrawingContext> Legend => null;
 
@@ -63,9 +61,26 @@ namespace LiveChartsCore.UnitTesting.MockedObjects
 
         public TooltipFindingStrategy TooltipFindingStrategy { get; set; }
 
+        public Color BackColor { get; set; }
+        public bool AutoUpdateEnaled { get; set; } = true;
+
+        public event ChartEventHandler<SkiaSharpDrawingContext> Measuring;
+        public event ChartEventHandler<SkiaSharpDrawingContext> UpdateStarted;
+        public event ChartEventHandler<SkiaSharpDrawingContext> UpdateFinished;
+
+        public void HideTooltip()
+        {
+            throw new NotImplementedException();
+        }
+
         public PointF ScaleUIPoint(PointF point, int xAxisIndex = 0, int yAxisIndex = 0)
         {
             return new PointF();
+        }
+
+        public void ShowTooltip(IEnumerable<TooltipPoint> points)
+        {
+            throw new NotImplementedException();
         }
     }
 }

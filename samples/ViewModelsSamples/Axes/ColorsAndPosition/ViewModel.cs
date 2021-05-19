@@ -2,6 +2,7 @@
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+using LiveChartsCore.Themes;
 using SkiaSharp;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,7 +15,7 @@ namespace ViewModelsSamples.Axes.ColorsAndPosition
     {
         private AxisPosition selectedPosition;
         private int selectedColor = 0;
-        private Color[] colors = ColorPacks.FluentDesign;
+        private Color[] colors = ColorPalletes.FluentDesign;
 
         public ViewModel()
         {
@@ -78,6 +79,8 @@ namespace ViewModelsSamples.Axes.ColorsAndPosition
             XAxes[0].Position = selectedPosition;
         }
 
+        // The next commands are only to enable XAML bindings
+        // they are not used in the WinForms sample
         public ICommand SetNewColorCommand => new Command(o => SetNewColor());
         public ICommand TogglePositionCommand => new Command(o => TogglePosition());
     }

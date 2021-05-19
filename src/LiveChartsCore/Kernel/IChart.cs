@@ -30,6 +30,14 @@ namespace LiveChartsCore.Kernel
     public interface IChart
     {
         /// <summary>
+        /// Gets or sets the measure work.
+        /// </summary>
+        /// <value>
+        /// The measure work.
+        /// </value>
+        object MeasureWork { get; }
+
+        /// <summary>
         /// Gets the chart view.
         /// </summary>
         /// <value>
@@ -73,7 +81,6 @@ namespace LiveChartsCore.Kernel
         /// <summary>
         /// Updates the chart in the user interface.
         /// </summary>
-        /// <param name="throttling">if set to <c>true</c> the update will be throttled, otherwise it will run immediately.</param>
-        void Update(bool throttling = true);
+        void Update(ChartUpdateParams? chartUpdateParams = null);
     }
 }

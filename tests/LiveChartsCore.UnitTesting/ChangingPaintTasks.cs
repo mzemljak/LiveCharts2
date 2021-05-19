@@ -1,4 +1,5 @@
-﻿using LiveChartsCore.SkiaSharpView;
+﻿using LiveChartsCore.Kernel;
+using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Drawing;
 using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.UnitTesting.MockedObjects;
@@ -40,16 +41,16 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
             var geometries = canvas.CountGeometries();
 
-            // on changing the fill task, the previouns instance should be removed.
+            // on changing the fill task, the previous instance should be removed.
             series.Fill = new SolidColorPaintTask();
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -86,7 +87,7 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
@@ -94,7 +95,7 @@ namespace LiveChartsCore.UnitTesting
 
             series.Stroke = new SolidColorPaintTask();
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -131,7 +132,7 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
@@ -140,7 +141,7 @@ namespace LiveChartsCore.UnitTesting
             series.GeometryFill = new SolidColorPaintTask();
             series.GeometryStroke = new SolidColorPaintTask();
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -176,18 +177,18 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
             var geometries = canvas.CountGeometries();
             seriesCollection.Add(new LineSeries<int> { Values = new List<int> { 1, 6, 4, 2 } });
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             seriesCollection.RemoveAt(0);
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -223,7 +224,7 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
@@ -234,7 +235,7 @@ namespace LiveChartsCore.UnitTesting
                 new LineSeries<int> { Values = new List<int> { 1, 6, 4, 2 } }
             };
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -271,7 +272,7 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
@@ -279,7 +280,7 @@ namespace LiveChartsCore.UnitTesting
 
             axis.TextBrush = new SolidColorPaintTask();
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -298,8 +299,8 @@ namespace LiveChartsCore.UnitTesting
                 {
                     new LineSeries<int> { Values = new List<int> { 1, 6, 4, 2 } },
                 },
-                XAxes = new[] { axis },
-                YAxes = new[] { new Axis() },
+                XAxes = new[] { new Axis() },
+                YAxes = new[] { axis },
             };
 
             var canvas = chart.CoreCanvas;
@@ -316,7 +317,7 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
@@ -324,7 +325,7 @@ namespace LiveChartsCore.UnitTesting
 
             axis.SeparatorsBrush = new SolidColorPaintTask();
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(
@@ -359,7 +360,7 @@ namespace LiveChartsCore.UnitTesting
                 }
             }
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             var drawables = canvas.DrawablesCount;
@@ -367,7 +368,7 @@ namespace LiveChartsCore.UnitTesting
 
             chart.XAxes = new[] { new Axis() };
 
-            chart.Core.Update(false);
+            chart.Core.Update(new ChartUpdateParams { Throttling = false });
             DrawChart();
 
             Assert.IsTrue(

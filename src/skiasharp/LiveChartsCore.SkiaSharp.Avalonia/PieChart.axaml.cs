@@ -37,6 +37,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Markup.Xaml.Templates;
 using Avalonia.Media;
 using A = Avalonia;
+using Avalonia.Input;
 
 namespace LiveChartsCore.SkiaSharpView.Avalonia
 {
@@ -60,9 +61,9 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </summary>
         protected IChartTooltip<SkiaSharpDrawingContext>? tooltip;
 
-        private readonly ActionThrottler mouseMoveThrottler;
-        private PointF mousePosition = new();
-        private readonly CollectionDeepObserver<ISeries> seriesObserver;
+        private readonly ActionThrottler _mouseMoveThrottler;
+        private PointF _mousePosition = new();
+        private readonly CollectionDeepObserver<ISeries> _seriesObserver;
 
         #endregion
 
@@ -74,19 +75,23 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         {
             InitializeComponent();
 
+            // workaround to detect mouse events.
+            // Avalonia do not seem to detect events if background is not set.
+            Background = new SolidColorBrush(Colors.Transparent);
+
             if (!LiveCharts.IsConfigured) LiveCharts.Configure(LiveChartsSkiaSharp.DefaultPlatformBuilder);
 
-            var stylesBuilder = LiveCharts.CurrentSettings.GetStylesBuilder<SkiaSharpDrawingContext>();
-            var initializer = stylesBuilder.GetInitializer();
+            var stylesBuilder = LiveCharts.CurrentSettings.GetTheme<SkiaSharpDrawingContext>();
+            var initializer = stylesBuilder.GetVisualsInitializer();
             if (stylesBuilder.CurrentColors == null || stylesBuilder.CurrentColors.Length == 0)
                 throw new Exception("Default colors are not valid");
-            initializer.ConstructChart(this);
+            initializer.ApplyStyleToChart(this);
 
             InitializeCore();
 
-            mouseMoveThrottler = new ActionThrottler(MouseMoveThrottlerUnlocked, TimeSpan.FromMilliseconds(10));
+            _mouseMoveThrottler = new ActionThrottler(MouseMoveThrottlerUnlocked, TimeSpan.FromMilliseconds(10));
 
-            seriesObserver = new CollectionDeepObserver<ISeries>(
+            _seriesObserver = new CollectionDeepObserver<ISeries>(
                (object? sender, NotifyCollectionChangedEventArgs e) =>
                {
                    if (core == null) return;
@@ -99,10 +104,7 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
                });
 
             Series = new ObservableCollection<ISeries>();
-
-            // workaround to deteck mouse events.
-            // avalonia do not seem to detect events if brackground is not set.
-            Background = new SolidColorBrush(Colors.Transparent);
+            PointerLeave += CartesianChart_PointerLeave;
 
             PointerMoved += CartesianChart_PointerMoved;
         }
@@ -120,6 +122,24 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </summary>
         public static readonly AvaloniaProperty<IEnumerable<ISeries>> SeriesProperty =
             AvaloniaProperty.Register<PieChart, IEnumerable<ISeries>>(nameof(Series), new List<ISeries>(), inherits: true);
+
+        /// <summary>
+        /// The initial rotation property
+        /// </summary>
+        public static readonly AvaloniaProperty<double> InitialRotationProperty =
+            AvaloniaProperty.Register<PieChart, double>(nameof(InitialRotation), 0d, inherits: true);
+
+        /// <summary>
+        /// The maximum angle property
+        /// </summary>
+        public static readonly AvaloniaProperty<double> MaxAngleProperty =
+            AvaloniaProperty.Register<PieChart, double>(nameof(MaxAngle), 360d, inherits: true);
+
+        /// <summary>
+        /// The total property
+        /// </summary>
+        public static readonly AvaloniaProperty<double?> TotalProperty =
+            AvaloniaProperty.Register<PieChart, double?>(nameof(Total), null, inherits: true);
 
         /// <summary>
         /// The animations speed property
@@ -257,75 +277,106 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
 
         #endregion
 
-        SizeF IChartView.ControlSize
+        #region events
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.Measuring" />
+        public event ChartEventHandler<SkiaSharpDrawingContext>? Measuring;
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.UpdateStarted" />
+        public event ChartEventHandler<SkiaSharpDrawingContext>? UpdateStarted;
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.UpdateFinished" />
+        public event ChartEventHandler<SkiaSharpDrawingContext>? UpdateFinished;
+
+        #endregion
+
+        #region properties
+
+        System.Drawing.Color IChartView.BackColor
         {
-            get
+            get => Background is not ISolidColorBrush b
+                    ? new System.Drawing.Color()
+                    : System.Drawing.Color.FromArgb(b.Color.A, b.Color.R, b.Color.G, b.Color.B);
+            set
             {
-                return new SizeF
-                {
-                    Width = (float)Bounds.Width,
-                    Height = (float)Bounds.Height
-                };
+                Background = new SolidColorBrush(new A.Media.Color(value.R, value.G, value.B, value.A));
+                var canvas = this.FindControl<MotionCanvas>("canvas");
+                canvas.BackColor = new SkiaSharp.SKColor(value.R, value.G, value.B, value.A);
             }
         }
+
+        SizeF IChartView.ControlSize => new()
+        {
+            Width = (float)Bounds.Width,
+            Height = (float)Bounds.Height
+        };
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.CoreCanvas" />
-        public MotionCanvas<SkiaSharpDrawingContext> CoreCanvas
-        {
-            get
-            {
-                return core == null ? throw new Exception("core not found") : core.Canvas;
-            }
-        }
+        public MotionCanvas<SkiaSharpDrawingContext> CoreCanvas => core == null ? throw new Exception("core not found") : core.Canvas;
 
-        PieChart<SkiaSharpDrawingContext> IPieChartView<SkiaSharpDrawingContext>.Core
-        {
-            get
-            {
-                return core == null ? throw new Exception("core not found") : (PieChart<SkiaSharpDrawingContext>)core;
-            }
-        }
+        PieChart<SkiaSharpDrawingContext> IPieChartView<SkiaSharpDrawingContext>.Core => core == null ? throw new Exception("core not found") : (PieChart<SkiaSharpDrawingContext>)core;
 
         /// <inheritdoc cref="IChartView.DrawMargin" />
         public Margin? DrawMargin
         {
-            get { return (Margin?)GetValue(DrawMarginProperty); }
-            set { SetValue(DrawMarginProperty, value); }
+            get => (Margin?)GetValue(DrawMarginProperty);
+            set => SetValue(DrawMarginProperty, value);
         }
 
         /// <inheritdoc cref="IPieChartView{TDrawingContext}.Series" />
         public IEnumerable<ISeries> Series
         {
-            get { return (IEnumerable<ISeries>)GetValue(SeriesProperty); }
-            set { SetValue(SeriesProperty, value); }
+            get => (IEnumerable<ISeries>)GetValue(SeriesProperty);
+            set => SetValue(SeriesProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.InitialRotation" />
+        public double InitialRotation
+        {
+            get => (double)GetValue(InitialRotationProperty);
+            set => SetValue(InitialRotationProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.MaxAngle" />
+        public double MaxAngle
+        {
+            get => (double)GetValue(MaxAngleProperty);
+            set => SetValue(MaxAngleProperty, value);
+        }
+
+        /// <inheritdoc cref="IPieChartView{TDrawingContext}.Total" />
+        public double? Total
+        {
+            get => (double?)GetValue(TotalProperty);
+            set => SetValue(TotalProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.AnimationsSpeed" />
         public TimeSpan AnimationsSpeed
         {
-            get { return (TimeSpan)GetValue(AnimationsSpeedProperty); }
-            set { SetValue(AnimationsSpeedProperty, value); }
+            get => (TimeSpan)GetValue(AnimationsSpeedProperty);
+            set => SetValue(AnimationsSpeedProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.EasingFunction" />
         public Func<float, float> EasingFunction
         {
-            get { return (Func<float, float>)GetValue(EasingFunctionProperty); }
-            set { SetValue(AnimationsSpeedProperty, value); }
+            get => (Func<float, float>)GetValue(EasingFunctionProperty);
+            set => SetValue(EasingFunctionProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.TooltipPosition" />
         public TooltipPosition TooltipPosition
         {
-            get { return (TooltipPosition)GetValue(TooltipPositionProperty); }
-            set { SetValue(TooltipPositionProperty, value); }
+            get => (TooltipPosition)GetValue(TooltipPositionProperty);
+            set => SetValue(TooltipPositionProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
         public TooltipFindingStrategy TooltipFindingStrategy
         {
-            get { return (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty); }
-            set { SetValue(TooltipFindingStrategyProperty, value); }
+            get => (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty);
+            set => SetValue(TooltipFindingStrategyProperty, value);
         }
 
         /// <summary>
@@ -336,8 +387,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public DataTemplate TooltipTemplate
         {
-            get { return (DataTemplate)GetValue(TooltipTemplateProperty); }
-            set { SetValue(TooltipTemplateProperty, value); }
+            get => (DataTemplate)GetValue(TooltipTemplateProperty);
+            set => SetValue(TooltipTemplateProperty, value);
         }
 
         /// <summary>
@@ -348,8 +399,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public A.Media.FontFamily TooltipFontFamily
         {
-            get { return (A.Media.FontFamily)GetValue(TooltipFontFamilyProperty); }
-            set { SetValue(TooltipFontFamilyProperty, value); }
+            get => (A.Media.FontFamily)GetValue(TooltipFontFamilyProperty);
+            set => SetValue(TooltipFontFamilyProperty, value);
         }
 
         /// <summary>
@@ -360,8 +411,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public double TooltipFontSize
         {
-            get { return (double)GetValue(TooltipFontSizeProperty); }
-            set { SetValue(TooltipFontSizeProperty, value); }
+            get => (double)GetValue(TooltipFontSizeProperty);
+            set => SetValue(TooltipFontSizeProperty, value);
         }
 
         /// <summary>
@@ -372,8 +423,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public FontWeight TooltipFontWeight
         {
-            get { return (FontWeight)GetValue(TooltipFontWeightProperty); }
-            set { SetValue(TooltipFontWeightProperty, value); }
+            get => (FontWeight)GetValue(TooltipFontWeightProperty);
+            set => SetValue(TooltipFontWeightProperty, value);
         }
 
         /// <summary>
@@ -384,8 +435,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public A.Media.FontStyle TooltipFontStyle
         {
-            get { return (A.Media.FontStyle)GetValue(TooltipFontStyleProperty); }
-            set { SetValue(TooltipFontStyleProperty, value); }
+            get => (A.Media.FontStyle)GetValue(TooltipFontStyleProperty);
+            set => SetValue(TooltipFontStyleProperty, value);
         }
 
         /// <summary>
@@ -396,20 +447,20 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public SolidColorBrush TooltipTextBrush
         {
-            get { return (SolidColorBrush)GetValue(TooltipTextBrushProperty); }
-            set { SetValue(TooltipTextBrushProperty, value); }
+            get => (SolidColorBrush)GetValue(TooltipTextBrushProperty);
+            set => SetValue(TooltipTextBrushProperty, value);
         }
 
         /// <summary>
         /// Gets or sets the default tool tip background.
         /// </summary>
         /// <value>
-        /// The too ltip background.
+        /// The tool tip background.
         /// </value>
         public IBrush TooltipBackground
         {
-            get { return (IBrush)GetValue(TooltipBackgroundProperty); }
-            set { SetValue(TooltipBackgroundProperty, value); }
+            get => (IBrush)GetValue(TooltipBackgroundProperty);
+            set => SetValue(TooltipBackgroundProperty, value);
         }
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.Tooltip" />
@@ -418,15 +469,15 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// <inheritdoc cref="IChartView.LegendPosition" />
         public LegendPosition LegendPosition
         {
-            get { return (LegendPosition)GetValue(LegendPositionProperty); }
-            set { SetValue(LegendPositionProperty, value); }
+            get => (LegendPosition)GetValue(LegendPositionProperty);
+            set => SetValue(LegendPositionProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.LegendOrientation" />
         public LegendOrientation LegendOrientation
         {
-            get { return (LegendOrientation)GetValue(LegendOrientationProperty); }
-            set { SetValue(LegendOrientationProperty, value); }
+            get => (LegendOrientation)GetValue(LegendOrientationProperty);
+            set => SetValue(LegendOrientationProperty, value);
         }
 
         /// <summary>
@@ -437,8 +488,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public DataTemplate LegendTemplate
         {
-            get { return (DataTemplate)GetValue(LegendTemplateProperty); }
-            set { SetValue(LegendTemplateProperty, value); }
+            get => (DataTemplate)GetValue(LegendTemplateProperty);
+            set => SetValue(LegendTemplateProperty, value);
         }
 
         /// <summary>
@@ -449,8 +500,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public A.Media.FontFamily LegendFontFamily
         {
-            get { return (A.Media.FontFamily)GetValue(LegendFontFamilyProperty); }
-            set { SetValue(LegendFontFamilyProperty, value); }
+            get => (A.Media.FontFamily)GetValue(LegendFontFamilyProperty);
+            set => SetValue(LegendFontFamilyProperty, value);
         }
 
         /// <summary>
@@ -461,8 +512,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public double LegendFontSize
         {
-            get { return (double)GetValue(LegendFontSizeProperty); }
-            set { SetValue(LegendFontSizeProperty, value); }
+            get => (double)GetValue(LegendFontSizeProperty);
+            set => SetValue(LegendFontSizeProperty, value);
         }
 
         /// <summary>
@@ -473,8 +524,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public FontWeight LegendFontWeight
         {
-            get { return (FontWeight)GetValue(LegendFontWeightProperty); }
-            set { SetValue(LegendFontWeightProperty, value); }
+            get => (FontWeight)GetValue(LegendFontWeightProperty);
+            set => SetValue(LegendFontWeightProperty, value);
         }
 
         /// <summary>
@@ -485,8 +536,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public A.Media.FontStyle LegendFontStyle
         {
-            get { return (A.Media.FontStyle)GetValue(LegendFontStyleProperty); }
-            set { SetValue(LegendFontStyleProperty, value); }
+            get => (A.Media.FontStyle)GetValue(LegendFontStyleProperty);
+            set => SetValue(LegendFontStyleProperty, value);
         }
 
         /// <summary>
@@ -497,8 +548,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public SolidColorBrush LegendTextBrush
         {
-            get { return (SolidColorBrush)GetValue(LegendTextBrushProperty); }
-            set { SetValue(LegendTextBrushProperty, value); }
+            get => (SolidColorBrush)GetValue(LegendTextBrushProperty);
+            set => SetValue(LegendTextBrushProperty, value);
         }
 
         /// <summary>
@@ -509,8 +560,8 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </value>
         public IBrush LegendBackground
         {
-            get { return (IBrush)GetValue(LegendBackgroundProperty); }
-            set { SetValue(LegendBackgroundProperty, value); }
+            get => (IBrush)GetValue(LegendBackgroundProperty);
+            set => SetValue(LegendBackgroundProperty, value);
         }
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.Legend" />
@@ -518,6 +569,27 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.PointStates" />
         public PointStatesDictionary<SkiaSharpDrawingContext> PointStates { get; set; } = new();
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
+        public bool AutoUpdateEnaled { get; set; } = true;
+
+        #endregion
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.ShowTooltip(IEnumerable{TooltipPoint})"/>
+        public void ShowTooltip(IEnumerable<TooltipPoint> points)
+        {
+            if (tooltip == null || core == null) return;
+
+            tooltip.Show(points, core);
+        }
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.HideTooltip"/>
+        public void HideTooltip()
+        {
+            if (tooltip == null || core == null) return;
+
+            tooltip.Hide();
+        }
 
         /// <summary>
         /// Initializes the core.
@@ -527,8 +599,13 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         {
             var canvas = this.FindControl<MotionCanvas>("canvas");
             core = new PieChart<SkiaSharpDrawingContext>(this, LiveChartsSkiaSharp.DefaultPlatformBuilder, canvas.CanvasCore);
-            //legend = Template.FindName("legend", this) as IChartLegend<SkiaSharpDrawingContext>;
-            //tooltip = Template.FindName("tooltip", this) as IChartTooltip<SkiaSharpDrawingContext>;
+
+            core.Measuring += OnCoreMeasuring;
+            core.UpdateStarted += OnCoreUpdateStarted;
+            core.UpdateFinished += OnCoreUpdateFinished;
+
+            legend = this.FindControl<DefaultLegend>("legend");
+            tooltip = this.FindControl<DefaultTooltip>("tooltip");
             _ = Dispatcher.UIThread.InvokeAsync(() => core.Update(), DispatcherPriority.Background);
         }
 
@@ -541,9 +618,18 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
 
             if (change.Property.Name == nameof(Series))
             {
-                seriesObserver.Dispose((IEnumerable<ISeries>)change.OldValue.Value);
-                seriesObserver.Initialize((IEnumerable<ISeries>)change.NewValue.Value);
+                _seriesObserver.Dispose((IEnumerable<ISeries>)change.OldValue.Value);
+                _seriesObserver.Initialize((IEnumerable<ISeries>)change.NewValue.Value);
                 return;
+            }
+
+            if (change.Property.Name == nameof(Background))
+            {
+                var canvas = this.FindControl<MotionCanvas>("canvas");
+                var color = Background is not ISolidColorBrush b
+                    ? new System.Drawing.Color()
+                    : System.Drawing.Color.FromArgb(b.Color.A, b.Color.R, b.Color.G, b.Color.B);
+                canvas.BackColor = new SkiaSharp.SKColor(color.R, color.G, color.B, color.A);
             }
 
             _ = Dispatcher.UIThread.InvokeAsync(() => core.Update(), DispatcherPriority.Background);
@@ -552,7 +638,7 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         private void MouseMoveThrottlerUnlocked()
         {
             if (core == null || tooltip == null || TooltipPosition == TooltipPosition.Hidden) return;
-            tooltip.Show(core.FindPointsNearTo(mousePosition), core);
+            tooltip.Show(core.FindPointsNearTo(_mousePosition), core);
         }
 
         private void InitializeComponent()
@@ -560,11 +646,31 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
             AvaloniaXamlLoader.Load(this);
         }
 
-        private void CartesianChart_PointerMoved(object? sender, A.Input.PointerEventArgs e)
+        private void CartesianChart_PointerMoved(object? sender, PointerEventArgs e)
         {
             var p = e.GetPosition(this);
-            mousePosition = new PointF((float)p.X, (float)p.Y);
-            mouseMoveThrottler.Call();
+            _mousePosition = new PointF((float)p.X, (float)p.Y);
+            _mouseMoveThrottler.Call();
+        }
+
+        private void OnCoreUpdateFinished(IChartView<SkiaSharpDrawingContext> chart)
+        {
+            UpdateFinished?.Invoke(this);
+        }
+
+        private void OnCoreUpdateStarted(IChartView<SkiaSharpDrawingContext> chart)
+        {
+            UpdateStarted?.Invoke(this);
+        }
+
+        private void OnCoreMeasuring(IChartView<SkiaSharpDrawingContext> chart)
+        {
+            Measuring?.Invoke(this);
+        }
+
+        private void CartesianChart_PointerLeave(object? sender, PointerEventArgs e)
+        {
+            tooltip?.Hide();
         }
     }
 }

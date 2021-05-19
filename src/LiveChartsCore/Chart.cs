@@ -81,17 +81,17 @@ namespace LiveChartsCore
         protected IChartLegend<TDrawingContext>? legend;
 
         /// <summary>
-        /// The tooltip position
+        /// The tool tip position
         /// </summary>
         protected TooltipPosition tooltipPosition;
 
         /// <summary>
-        /// The tooltip finding strategy
+        /// The tool tip finding strategy
         /// </summary>
         protected TooltipFindingStrategy tooltipFindingStrategy;
 
         /// <summary>
-        /// The tooltip
+        /// The tool tip
         /// </summary>
         protected IChartTooltip<TDrawingContext>? tooltip;
 
@@ -103,7 +103,7 @@ namespace LiveChartsCore
         /// <summary>
         /// The easing function
         /// </summary>
-        protected Func<float, float> easingFunction;
+        protected Func<float, float>? easingFunction;
 
         /// <summary>
         /// The draw margin size
@@ -111,9 +111,9 @@ namespace LiveChartsCore
         protected SizeF drawMarginSize;
 
         /// <summary>
-        /// The draw maring location
+        /// The draw margin location
         /// </summary>
-        protected PointF drawMaringLocation;
+        protected PointF drawMarginLocation;
 
         #endregion
 
@@ -125,12 +125,46 @@ namespace LiveChartsCore
         public Chart(MotionCanvas<TDrawingContext> canvas, Action<LiveChartsSettings> defaultPlatformConfig)
         {
             this.canvas = canvas;
+            canvas.Validated += OnCanvasValidated;
             easingFunction = EasingFunctions.QuadraticOut;
             if (!LiveCharts.IsConfigured) LiveCharts.Configure(defaultPlatformConfig);
             updateThrottler = new ActionThrottler(UpdateThrottlerUnlocked, TimeSpan.FromMilliseconds(10));
         }
 
+        /// <inheritdoc cref="IChartView{TDrawingContext}.Measuring" />
+        public event ChartEventHandler<TDrawingContext>? Measuring;
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.UpdateStarted" />
+        public event ChartEventHandler<TDrawingContext>? UpdateStarted;
+
+        /// <inheritdoc cref="IChartView{TDrawingContext}.UpdateFinished" />
+        public event ChartEventHandler<TDrawingContext>? UpdateFinished;
+
         #region properties
+
+        /// <summary>
+        /// Gets the measure work.
+        /// </summary>
+        /// <value>
+        /// The measure work.
+        /// </value>
+        public object MeasureWork { get; protected set; } = new object();
+
+        /// <summary>
+        /// Gets or sets the theme identifier.
+        /// </summary>
+        /// <value>
+        /// The theme identifier.
+        /// </value>
+        public object ThemeId { get; protected set; } = new object();
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this it is the first draw of this instance.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this it is the first draw; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsFirstDraw { get; set; } = true;
 
         /// <summary>
         /// Gets the series context.
@@ -174,12 +208,12 @@ namespace LiveChartsCore
         public SizeF ControlSize => controlSize;
 
         /// <summary>
-        /// Gets the draw maring location.
+        /// Gets the draw margin location.
         /// </summary>
         /// <value>
-        /// The draw maring location.
+        /// The draw margin location.
         /// </value>
-        public PointF DrawMaringLocation => drawMaringLocation;
+        public PointF DrawMarginLocation => drawMarginLocation;
 
         /// <summary>
         /// Gets the size of the draw margin.
@@ -255,8 +289,8 @@ namespace LiveChartsCore
 
         #endregion region
 
-        /// <inheritdoc cref="IChart.Update(bool)" />
-        public abstract void Update(bool throttling = true);
+        /// <inheritdoc cref="IChart.Update(ChartUpdateParams?)" />
+        public abstract void Update(ChartUpdateParams? chartUpdateParams = null);
 
         /// <summary>
         /// Measures this chart.
@@ -291,7 +325,39 @@ namespace LiveChartsCore
                 Height = controlSize.Height - margin.Top - margin.Bottom
             };
 
-            drawMaringLocation = new PointF(margin.Left, margin.Top);
+            drawMarginLocation = new PointF(margin.Left, margin.Top);
+        }
+
+        /// <summary>
+        /// Invokes the <see cref="Measuring"/> event.
+        /// </summary>
+        /// <returns></returns>
+        protected void InvokeOnMeasuring()
+        {
+            Measuring?.Invoke(View);
+        }
+
+        /// <summary>
+        /// Invokes the on update started.
+        /// </summary>
+        /// <returns></returns>
+        protected void InvokeOnUpdateStarted()
+        {
+            UpdateStarted?.Invoke(View);
+        }
+
+        /// <summary>
+        /// Invokes the on update finished.
+        /// </summary>
+        /// <returns></returns>
+        protected void InvokeOnUpdateFinished()
+        {
+            UpdateFinished?.Invoke(View);
+        }
+
+        private void OnCanvasValidated(MotionCanvas<TDrawingContext> chart)
+        {
+            InvokeOnUpdateFinished();
         }
     }
 }

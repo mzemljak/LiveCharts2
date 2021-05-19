@@ -30,8 +30,8 @@ namespace LiveChartsCore.SkiaSharpView.Drawing.Geometries
     /// <inheritdoc cref="IPathGeometry{TDrawingContext, TPathArgs}" />
     public class PathGeometry : Drawable, IPathGeometry<SkiaSharpDrawingContext, SKPath>
     {
-        private readonly HashSet<IPathCommand<SKPath>> commands = new HashSet<IPathCommand<SKPath>>();
-        private IPathCommand<SKPath>[] drawingCommands = null;
+        private readonly HashSet<IPathCommand<SKPath>> _commands = new();
+        private IPathCommand<SKPath>[]? _drawingCommands = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PathGeometry"/> class.
@@ -46,53 +46,54 @@ namespace LiveChartsCore.SkiaSharpView.Drawing.Geometries
         /// <inheritdoc cref="Geometry.OnDraw(SkiaSharpDrawingContext, SKPaint)" />
         public override void Draw(SkiaSharpDrawingContext context)
         {
-            if (commands.Count == 0) return;
+            if (_commands.Count == 0) return;
 
-            var toExecute = drawingCommands ?? (drawingCommands = commands.ToArray());
+            var toExecute = _drawingCommands ??= _commands.ToArray();
 
-            var path = new SKPath();
-            var isValid = true;
-
-            foreach (var segment in toExecute)
+            using (var path = new SKPath())
             {
-                segment.IsCompleted = true;
-                segment.Execute(path, GetCurrentTime(), this);
-                isValid = isValid && segment.IsCompleted;
+                var isValid = true;
+
+                foreach (var segment in toExecute)
+                {
+                    segment.IsCompleted = true;
+                    segment.Execute(path, GetCurrentTime(), this);
+                    isValid = isValid && segment.IsCompleted;
+                }
+
+                if (IsClosed) path.Close();
+                context.Canvas.DrawPath(path, context.Paint);
+
+                if (!isValid) Invalidate();
             }
-
-            if (IsClosed) path.Close();
-            context.Canvas.DrawPath(path, context.Paint);
-
-            if (!isValid) Invalidate();
-
         }
 
         /// <inheritdoc cref="IPathGeometry{TDrawingContext, TPathArgs}.AddCommand(IPathCommand{TPathArgs})" />
         public void AddCommand(IPathCommand<SKPath> segment)
         {
-            _ = commands.Add(segment);
-            drawingCommands = null;
+            _ = _commands.Add(segment);
+            _drawingCommands = null;
             Invalidate();
         }
 
         /// <inheritdoc cref="IPathGeometry{TDrawingContext, TPathArgs}.ContainsCommand(IPathCommand{TPathArgs})" />
         public bool ContainsCommand(IPathCommand<SKPath> segment)
         {
-            return commands.Contains(segment);
+            return _commands.Contains(segment);
         }
 
         /// <inheritdoc cref="IPathGeometry{TDrawingContext, TPathArgs}.RemoveCommand(IPathCommand{TPathArgs})" />
         public void RemoveCommand(IPathCommand<SKPath> segment)
         {
-            _ = commands.Remove(segment);
-            drawingCommands = null;
+            _ = _commands.Remove(segment);
+            _drawingCommands = null;
             Invalidate();
         }
 
         /// <inheritdoc cref="IPathGeometry{TDrawingContext, TPathArgs}.ClearCommands" />
         public void ClearCommands()
         {
-            commands.Clear();
+            _commands.Clear();
         }
     }
 }

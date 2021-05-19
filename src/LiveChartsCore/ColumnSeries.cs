@@ -37,7 +37,7 @@ namespace LiveChartsCore
     /// <typeparam name="TLabel"></typeparam>
     /// <typeparam name="TDrawingContext"></typeparam>
     public abstract class ColumnSeries<TModel, TVisual, TLabel, TDrawingContext> : BarSeries<TModel, TVisual, TLabel, TDrawingContext>
-        where TVisual : class, ISizedVisualChartPoint<TDrawingContext>, new()
+        where TVisual : class, IRoundedRectangleChartPoint<TDrawingContext>, new()
         where TDrawingContext : DrawingContext
         where TLabel : class, ILabelGeometry<TDrawingContext>, new()
     {
@@ -45,25 +45,31 @@ namespace LiveChartsCore
         /// Initializes a new instance of the <see cref="ColumnSeries{TModel, TVisual, TLabel, TDrawingContext}"/> class.
         /// </summary>
         public ColumnSeries()
-            : base(SeriesProperties.Bar | SeriesProperties.VerticalOrientation)
+            : base(SeriesProperties.Bar | SeriesProperties.PrimaryAxisVerticalOrientation | SeriesProperties.Solid)
         {
+            DataPadding = new PointF(0, 1);
         }
 
         /// <inheritdoc cref="ICartesianSeries{TDrawingContext}.Measure(CartesianChart{TDrawingContext}, IAxis{TDrawingContext}, IAxis{TDrawingContext})"/>
         public override void Measure(
            CartesianChart<TDrawingContext> chart, IAxis<TDrawingContext> secondaryAxis, IAxis<TDrawingContext> primaryAxis)
         {
-            var drawLocation = chart.DrawMaringLocation;
+            var drawLocation = chart.DrawMarginLocation;
             var drawMarginSize = chart.DrawMarginSize;
             var secondaryScale = new Scaler(drawLocation, drawMarginSize, secondaryAxis);
             var primaryScale = new Scaler(drawLocation, drawMarginSize, primaryAxis);
+            var previousPrimaryScale =
+                primaryAxis.PreviousDataBounds == null ? null : new Scaler(drawLocation, drawMarginSize, primaryAxis, true);
             var previousSecondaryScale =
-                secondaryAxis.PreviousDataBounds == null ? null : new Scaler(drawLocation, drawMarginSize, secondaryAxis);
+                secondaryAxis.PreviousDataBounds == null ? null : new Scaler(drawLocation, drawMarginSize, secondaryAxis, true);
 
-            var uw = secondaryScale.ToPixels(1f) - secondaryScale.ToPixels(0f);
+            var uw = secondaryScale.ToPixels((float)secondaryAxis.UnitWidth) - secondaryScale.ToPixels(0f);
+            var puw = previousSecondaryScale == null ? 0 : previousSecondaryScale.ToPixels((float)secondaryAxis.UnitWidth) - previousSecondaryScale.ToPixels(0f);
+
+            uw -= (float)GroupPadding;
+            puw -= (float)GroupPadding;
+
             var uwm = 0.5f * uw;
-            var sw = Stroke?.StrokeThickness ?? 0;
-            var p = primaryScale.ToPixels(pivot);
 
             var pos = chart.SeriesContext.GetColumnPostion(this);
             var count = chart.SeriesContext.GetColumnSeriesCount();
@@ -72,6 +78,7 @@ namespace LiveChartsCore
             if (!IgnoresBarPosition && count > 1)
             {
                 uw /= count;
+                puw /= count;
                 uwm = 0.5f * uw;
                 cp = (pos - count / 2f) * uw + uwm;
             }
@@ -79,8 +86,12 @@ namespace LiveChartsCore
             if (uw > MaxBarWidth)
             {
                 uw = (float)MaxBarWidth;
-                uwm = uw / 2f;
+                uwm = uw * 0.5f;
+                puw = uw;
             }
+
+            var sw = Stroke?.StrokeThickness ?? 0;
+            var p = primaryScale.ToPixels(pivot);
 
             var actualZIndex = ZIndex == 0 ? ((ISeries)this).SeriesId : ZIndex;
             if (Fill != null)
@@ -104,6 +115,9 @@ namespace LiveChartsCore
 
             var dls = (float)DataLabelsSize;
             var toDeletePoints = new HashSet<ChartPoint>(everFetched);
+
+            var rx = (float)Rx;
+            var ry = (float)Ry;
 
             foreach (var point in Fetch(chart))
             {
@@ -129,14 +143,31 @@ namespace LiveChartsCore
                 if (visual == null)
                 {
                     var xi = secondary - uwm + cp;
-                    if (previousSecondaryScale != null) xi = previousSecondaryScale.ToPixels(point.SecondaryValue) - uwm + cp;
+                    var pi = p;
+                    var uwi = uw;
+                    var hi = 0f;
+
+                    if (previousSecondaryScale != null && previousPrimaryScale != null)
+                    {
+                        var previousP = previousPrimaryScale.ToPixels(pivot);
+                        var previousPrimary = previousPrimaryScale.ToPixels(point.PrimaryValue);
+                        var bp = Math.Abs(previousPrimary - previousP);
+                        var cyp = point.PrimaryValue > pivot ? previousPrimary : previousPrimary - bp;
+
+                        xi = previousSecondaryScale.ToPixels(point.SecondaryValue) - uwm + cp;
+                        pi = chart.IsZoomingOrPanning ? cyp : previousP;
+                        uwi = puw;
+                        hi = chart.IsZoomingOrPanning ? bp : 0;
+                    }
 
                     var r = new TVisual
                     {
                         X = xi,
-                        Y = p,
-                        Width = uw,
-                        Height = 0
+                        Y = pi,
+                        Width = uwi,
+                        Height = 0,
+                        Rx = rx,
+                        Ry = ry
                     };
 
                     visual = r;
@@ -147,8 +178,8 @@ namespace LiveChartsCore
                     _ = everFetched.Add(point);
                 }
 
-                if (Fill != null) Fill.AddGeometyToPaintTask(visual);
-                if (Stroke != null) Stroke.AddGeometyToPaintTask(visual);
+                if (Fill != null) Fill.AddGeometryToPaintTask(visual);
+                if (Stroke != null) Stroke.AddGeometryToPaintTask(visual);
 
                 var cy = point.PrimaryValue > pivot ? primary : primary - b;
                 var x = secondary - uwm + cp;
@@ -157,6 +188,8 @@ namespace LiveChartsCore
                 visual.Y = cy;
                 visual.Width = uw;
                 visual.Height = b;
+                visual.Rx = rx;
+                visual.Ry = ry;
                 visual.RemoveOnCompleted = false;
 
                 var ha = new RectangleHoverArea().SetDimensions(secondary - uwm + cp, cy, uw, b);
@@ -174,14 +207,15 @@ namespace LiveChartsCore
                         var l = new TLabel { X = secondary - uwm + cp, Y = p };
 
                         _ = l.TransitionateProperties(nameof(l.X), nameof(l.Y))
-                            .WithAnimation(a =>
-                                a.WithDuration(chart.AnimationsSpeed)
-                                .WithEasingFunction(chart.EasingFunction));
+                            .WithAnimation(animation =>
+                                animation
+                                    .WithDuration(AnimationsSpeed ?? chart.AnimationsSpeed)
+                                    .WithEasingFunction(EasingFunction ?? chart.EasingFunction));
 
                         l.CompleteAllTransitions();
                         label = l;
                         point.Context.Label = l;
-                        DataLabelsDrawableTask.AddGeometyToPaintTask(l);
+                        DataLabelsDrawableTask.AddGeometryToPaintTask(l);
                     }
 
                     label.Text = DataLabelsFormatter(point);
@@ -208,30 +242,48 @@ namespace LiveChartsCore
         {
             var baseBounds = base.GetBounds(chart, secondaryAxis, primaryAxis);
 
-            var tick = secondaryAxis.GetTick(chart.ControlSize, baseBounds.VisiblePrimaryBounds);
+            var tickPrimary = primaryAxis.GetTick(chart.ControlSize, baseBounds.VisiblePrimaryBounds);
+            var tickSecondary = secondaryAxis.GetTick(chart.ControlSize, baseBounds.VisibleSecondaryBounds);
+
+            var ts = tickSecondary.Value * DataPadding.X;
+            var tp = tickPrimary.Value * DataPadding.Y;
+
+            if (baseBounds.VisibleSecondaryBounds.Delta == 0)
+            {
+                var ms = baseBounds.VisibleSecondaryBounds.Min == 0 ? 1 : baseBounds.VisibleSecondaryBounds.Min;
+                ts = 0.1 * ms * DataPadding.X;
+            }
+
+            if (baseBounds.VisiblePrimaryBounds.Delta == 0)
+            {
+                var mp = baseBounds.VisiblePrimaryBounds.Min == 0 ? 1 : baseBounds.VisiblePrimaryBounds.Min;
+                tp = 0.1 * mp * DataPadding.Y;
+            }
 
             return new DimensionalBounds
             {
                 SecondaryBounds = new Bounds
                 {
-                    Max = baseBounds.SecondaryBounds.Max + 0.5,
-                    Min = baseBounds.SecondaryBounds.Min - 0.5
+                    Max = baseBounds.SecondaryBounds.Max + 0.5 * secondaryAxis.UnitWidth + ts,
+                    Min = baseBounds.SecondaryBounds.Min - 0.5 * secondaryAxis.UnitWidth - ts
                 },
                 PrimaryBounds = new Bounds
                 {
-                    Max = baseBounds.PrimaryBounds.Max + tick.Value,
-                    min = baseBounds.PrimaryBounds.min - tick.Value
+                    Max = baseBounds.PrimaryBounds.Max + tp,
+                    Min = baseBounds.PrimaryBounds.Min - tp
                 },
                 VisibleSecondaryBounds = new Bounds
                 {
-                    Max = baseBounds.VisibleSecondaryBounds.Max + 0.5,
-                    Min = baseBounds.VisibleSecondaryBounds.Min - 0.5
+                    Max = baseBounds.VisibleSecondaryBounds.Max + 0.5 * secondaryAxis.UnitWidth + ts,
+                    Min = baseBounds.VisibleSecondaryBounds.Min - 0.5 * secondaryAxis.UnitWidth - ts
                 },
                 VisiblePrimaryBounds = new Bounds
                 {
-                    Max = baseBounds.VisiblePrimaryBounds.Max + tick.Value,
-                    min = baseBounds.VisiblePrimaryBounds.min - tick.Value
+                    Max = baseBounds.VisiblePrimaryBounds.Max + tp,
+                    Min = baseBounds.VisiblePrimaryBounds.Min - tp
                 },
+                MinDeltaPrimary = baseBounds.MinDeltaPrimary,
+                MinDeltaSecondary = baseBounds.MinDeltaSecondary
             };
         }
 
@@ -243,17 +295,15 @@ namespace LiveChartsCore
             if (chartPoint.Context.Visual is not TVisual visual) throw new Exception("Unable to initialize the point instance.");
 
             _ = visual
-                .TransitionateProperties(nameof(visual.X), nameof(visual.Width))
+                .TransitionateProperties(
+                    nameof(visual.X),
+                    nameof(visual.Width),
+                    nameof(visual.Y),
+                    nameof(visual.Height))
                 .WithAnimation(animation =>
                     animation
-                        .WithDuration(chart.AnimationsSpeed)
-                        .WithEasingFunction(chart.EasingFunction));
-
-            _ = visual
-                .TransitionateProperties(nameof(visual.Y), nameof(visual.Height))
-                .WithAnimation(animation => animation
-                    .WithDuration(chart.AnimationsSpeed)
-                    .WithEasingFunction(elasticFunction));
+                        .WithDuration(AnimationsSpeed ?? chart.AnimationsSpeed)
+                        .WithEasingFunction(EasingFunction ?? chart.EasingFunction));
         }
 
         /// <inheritdoc cref="Series{TModel, TVisual, TLabel, TDrawingContext}.SoftDeletePoint(ChartPoint, Scaler, Scaler)"/>
@@ -262,14 +312,24 @@ namespace LiveChartsCore
             var visual = (TVisual?)point.Context.Visual;
             if (visual == null) return;
 
-            var p = primaryScale.ToPixels(pivot);
+            var chartView = (ICartesianChartView<TDrawingContext>)point.Context.Chart;
+            if (chartView.Core.IsZoomingOrPanning)
+            {
+                visual.CompleteAllTransitions();
+                visual.RemoveOnCompleted = true;
+                return;
+            }
 
+            var p = primaryScale.ToPixels(pivot);
             var secondary = secondaryScale.ToPixels(point.SecondaryValue);
 
             visual.X = secondary;
             visual.Y = p;
             visual.Height = 0;
             visual.RemoveOnCompleted = true;
+
+            if (dataProvider == null) throw new Exception("Data provider not found");
+            dataProvider.DisposePoint(point);
         }
     }
 }

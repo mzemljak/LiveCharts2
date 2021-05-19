@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 using LiveChartsCore.Drawing;
+using LiveChartsCore.Measure;
 
 namespace LiveChartsCore.Kernel
 {
@@ -51,7 +52,15 @@ namespace LiveChartsCore.Kernel
         int ScalesYAt { get; set; }
 
         /// <summary>
-        /// Gets the series bounds bounds.
+        /// Gets or sets the data labels position.
+        /// </summary>
+        /// <value>
+        /// The data labels position.
+        /// </value>
+        DataLabelsPosition DataLabelsPosition { get; set; }
+
+        /// <summary>
+        /// Gets the series bounds.
         /// </summary>
         /// <param name="chart">The chart.</param>
         /// <param name="x">The x.</param>
