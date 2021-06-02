@@ -29,6 +29,8 @@ using System.Drawing;
 using LiveChartsCore.Measure;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Linq;
+using System.Diagnostics;
 
 namespace LiveChartsCore
 {
@@ -200,6 +202,9 @@ namespace LiveChartsCore
         /// <inheritdoc cref="ISeries.EasingFunction" />
         public Func<float, float>? EasingFunction { get; set; }
 
+        /// <inheritdoc cref="ISeries.IsNotifyingChanges"/>
+        bool ISeries.IsNotifyingChanges { get; set; }
+
         /// <inheritdoc />
         public virtual int GetStackGroup()
         {
@@ -219,16 +224,17 @@ namespace LiveChartsCore
             return Fetch(chart);
         }
 
-        IEnumerable<TooltipPoint> ISeries.FindPointsNearTo(IChart chart, PointF pointerPosition)
+        IEnumerable<TooltipPoint> ISeries.FindPointsNearTo(IChart chart, PointF pointerPosition, TooltipFindingStrategy automaticStategy)
         {
-            return FilterTooltipPoints(Fetch(chart), chart, pointerPosition);
+            return FilterTooltipPoints(Fetch(chart), chart, pointerPosition, automaticStategy);
         }
 
         /// <inheritdoc />
         public void AddPointToState(ChartPoint chartPoint, string state)
         {
             var chart = (IChartView<TDrawingContext>)chartPoint.Context.Chart;
-            if (chart.PointStates == null) return;
+            if (chart.PointStates == null ||
+                (chart.TooltipPosition == TooltipPosition.Hidden && state == HoverState)) return;
 
             var s = chart.PointStates[state];
 
@@ -248,8 +254,8 @@ namespace LiveChartsCore
 
             OnAddedToState(visual, chart);
 
-            if (s.Fill != null) s.Fill.AddGeometryToPaintTask(highlitable);
-            if (s.Stroke != null) s.Stroke.AddGeometryToPaintTask(highlitable);
+            if (s.Fill != null) s.Fill.AddGeometryToPaintTask(chart.CoreCanvas, highlitable);
+            if (s.Stroke != null) s.Stroke.AddGeometryToPaintTask(chart.CoreCanvas, highlitable);
         }
 
         /// <inheritdoc />
@@ -274,8 +280,8 @@ namespace LiveChartsCore
 
             OnRemovedFromState(visual, chart);
 
-            if (s.Fill != null) s.Fill.RemoveGeometryFromPainTask(highlitable);
-            if (s.Stroke != null) s.Stroke.RemoveGeometryFromPainTask(highlitable);
+            if (s.Fill != null) s.Fill.RemoveGeometryFromPainTask(chart.CoreCanvas, highlitable);
+            if (s.Stroke != null) s.Stroke.RemoveGeometryFromPainTask(chart.CoreCanvas, highlitable);
         }
 
         /// <inheritdoc cref="ISeries.RestartAnimations"/>
@@ -352,14 +358,14 @@ namespace LiveChartsCore
         }
 
         /// <summary>
-        /// Defines the default behaviour when a point is added to a state.
+        /// Defines the default behavior when a point is added to a state.
         /// </summary>
         /// <param name="visual">The visual.</param>
         /// <param name="chart">The chart.</param>
         protected virtual void DefaultOnPointAddedToSate(TVisual visual, IChartView<TDrawingContext> chart) { }
 
         /// <summary>
-        /// Defines the default behaviour when a point is removed from a state.
+        /// Defines the default behavior when a point is removed from a state.
         /// </summary>
         /// <param name="visual">The visual.</param>
         /// <param name="chart">The chart.</param>
@@ -372,22 +378,65 @@ namespace LiveChartsCore
         /// <returns></returns>
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
+            if (!((ISeries)this).IsNotifyingChanges) return;
             NotifySubscribers();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private IEnumerable<TooltipPoint> FilterTooltipPoints(
-            IEnumerable<ChartPoint>? points, IChart chart, PointF pointerPosition)
+            IEnumerable<ChartPoint>? points, IChart chart, PointF pointerPosition, TooltipFindingStrategy automaticStategy)
         {
-            if (points == null) yield break;
+            if (points == null) return Enumerable.Empty<TooltipPoint>();
+            var tolerance = float.MaxValue;
+
+            if (this is ICartesianSeries<TDrawingContext> cartesianSeries)
+            {
+                var cartesianChart = (CartesianChart<TDrawingContext>)chart;
+                var drawLocation = cartesianChart.DrawMarginLocation;
+                var drawMarginSize = cartesianChart.DrawMarginSize;
+                var x = cartesianChart.XAxes[cartesianSeries.ScalesXAt];
+                var y = cartesianChart.YAxes[cartesianSeries.ScalesYAt];
+                var xScale = new Scaler(drawLocation, drawMarginSize, x);
+                var yScale = new Scaler(drawLocation, drawMarginSize, y);
+                var uwx = xScale.ToPixels((float)x.UnitWidth) - xScale.ToPixels(0);
+                var uwy = yScale.ToPixels((float)y.UnitWidth) - yScale.ToPixels(0);
+
+                switch (chart.TooltipFindingStrategy)
+                {
+                    case TooltipFindingStrategy.CompareAll:
+                        tolerance = (float)Math.Sqrt(Math.Pow(uwx, 2) + Math.Pow(uwy, 2));
+                        break;
+                    case TooltipFindingStrategy.CompareOnlyX:
+                        tolerance = Math.Abs(uwx);
+                        break;
+                    case TooltipFindingStrategy.CompareOnlyY:
+                        tolerance = Math.Abs(uwy);
+                        break;
+                    case TooltipFindingStrategy.Automatic:
+                    default:
+                        break;
+                }
+            }
+
+            var minD = new Tuple<float, List<TooltipPoint>>(10000, new List<TooltipPoint>());
 
             foreach (var point in points)
             {
                 if (point == null || point.Context.HoverArea == null) continue;
-                if (!point.Context.HoverArea.IsTriggerBy(pointerPosition, chart.TooltipFindingStrategy)) continue;
+                var d = point.Context.HoverArea.GetDistanceToPoint(pointerPosition, automaticStategy); //chart.TooltipFindingStrategy
+                if (d > tolerance || d > minD.Item1) continue;
 
-                yield return new TooltipPoint(this, point);
+                if (minD.Item1 == d)
+                {
+                    // in case of a tie, we add a new point to the same result
+                    minD.Item2.Add(new TooltipPoint(this, point));
+                    continue;
+                }
+
+                minD = new Tuple<float, List<TooltipPoint>>(d, new List<TooltipPoint> { new TooltipPoint(this, point) });
             }
+
+            return minD.Item2;
         }
 
         private void NotifySubscribers()

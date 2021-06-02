@@ -46,7 +46,9 @@ namespace LiveChartsCore
         /// Initializes a new instance of the <see cref="RowSeries{TModel, TVisual, TLabel, TDrawingContext}"/> class.
         /// </summary>
         public RowSeries()
-            : base(SeriesProperties.Bar | SeriesProperties.PrimaryAxisHorizontalOrientation | SeriesProperties.Solid) { }
+            : base(
+                  SeriesProperties.Bar | SeriesProperties.PrimaryAxisHorizontalOrientation
+                  | SeriesProperties.Solid | SeriesProperties.PrefersYStrategyTooltips) { }
 
         /// <inheritdoc cref="CartesianSeries{TModel, TVisual, TLabel, TDrawingContext}.Measure"/>
         public override void Measure(
@@ -59,7 +61,7 @@ namespace LiveChartsCore
                 primaryAxis.PreviousDataBounds == null ? null : new Scaler(drawLocation, drawMarginSize, primaryAxis);
             var primaryScale = new Scaler(drawLocation, drawMarginSize, secondaryAxis);
 
-            var uw = secondaryScale.ToPixels((float) primaryAxis.UnitWidth) - secondaryScale.ToPixels(0f);
+            var uw = secondaryScale.ToPixels(0f) - secondaryScale.ToPixels((float)primaryAxis.UnitWidth);
             var uwm = 0.5f * uw;
 
             uw -= (float)GroupPadding;
@@ -81,7 +83,7 @@ namespace LiveChartsCore
 
             if (uw > MaxBarWidth)
             {
-                uw = (float)MaxBarWidth * -1;
+                uw = (float)MaxBarWidth;
                 uwm = uw / 2f;
             }
 
@@ -89,20 +91,20 @@ namespace LiveChartsCore
             if (Fill != null)
             {
                 Fill.ZIndex = actualZIndex + 0.1;
-                Fill.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
+                Fill.SetClipRectangle(chart.Canvas, new RectangleF(drawLocation, drawMarginSize));
                 chart.Canvas.AddDrawableTask(Fill);
             }
             if (Stroke != null)
             {
                 Stroke.ZIndex = actualZIndex + 0.1;
-                Stroke.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
+                Stroke.SetClipRectangle(chart.Canvas, new RectangleF(drawLocation, drawMarginSize));
                 chart.Canvas.AddDrawableTask(Stroke);
             }
-            if (DataLabelsDrawableTask != null)
+            if (DataLabelsPaint != null)
             {
-                DataLabelsDrawableTask.ZIndex = actualZIndex + 0.1;
-                DataLabelsDrawableTask.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
-                chart.Canvas.AddDrawableTask(DataLabelsDrawableTask);
+                DataLabelsPaint.ZIndex = actualZIndex + 0.1;
+                DataLabelsPaint.SetClipRectangle(chart.Canvas, new RectangleF(drawLocation, drawMarginSize));
+                chart.Canvas.AddDrawableTask(DataLabelsPaint);
             }
 
             var dls = (float)DataLabelsSize;
@@ -155,8 +157,8 @@ namespace LiveChartsCore
                     _ = everFetched.Add(point);
                 }
 
-                if (Fill != null) Fill.AddGeometryToPaintTask(visual);
-                if (Stroke != null) Stroke.AddGeometryToPaintTask(visual);
+                if (Fill != null) Fill.AddGeometryToPaintTask(chart.Canvas, visual);
+                if (Stroke != null) Stroke.AddGeometryToPaintTask(chart.Canvas, visual);
 
                 var sizedGeometry = visual;
 
@@ -171,12 +173,12 @@ namespace LiveChartsCore
                 sizedGeometry.Ry = ry;
                 sizedGeometry.RemoveOnCompleted = false;
 
-                point.Context.HoverArea = new RectangleHoverArea().SetDimensions(primary, secondary - uwm + cp, b, uw);
+                point.Context.HoverArea = new RectangleHoverArea().SetDimensions(cx, y, b, uw);
 
                 OnPointMeasured(point);
                 _ = toDeletePoints.Remove(point);
 
-                if (DataLabelsDrawableTask != null)
+                if (DataLabelsPaint != null)
                 {
                     var label = (TLabel?)point.Context.Label;
 
@@ -193,14 +195,14 @@ namespace LiveChartsCore
                         l.CompleteAllTransitions();
                         label = l;
                         point.Context.Label = l;
-                        DataLabelsDrawableTask.AddGeometryToPaintTask(l);
                     }
 
+                    DataLabelsPaint.AddGeometryToPaintTask(chart.Canvas, label);
                     label.Text = DataLabelsFormatter(point);
                     label.TextSize = dls;
                     label.Padding = DataLabelsPadding;
                     var labelPosition = GetLabelPosition(
-                        cx, y, b, uw, label.Measure(DataLabelsDrawableTask), DataLabelsPosition, SeriesProperties, point.PrimaryValue > Pivot);
+                        cx, y, b, uw, label.Measure(DataLabelsPaint), DataLabelsPosition, SeriesProperties, point.PrimaryValue > Pivot);
                     label.X = labelPosition.X;
                     label.Y = labelPosition.Y;
                 }

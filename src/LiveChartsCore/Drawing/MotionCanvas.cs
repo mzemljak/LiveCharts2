@@ -35,7 +35,7 @@ namespace LiveChartsCore.Drawing
         where TDrawingContext : DrawingContext
     {
         private readonly Stopwatch _stopwatch = new();
-        private HashSet<IDrawableTask<TDrawingContext>> _paintTasks = new();
+        private HashSet<IPaintTask<TDrawingContext>> _paintTasks = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MotionCanvas{TDrawingContext}"/> class.
@@ -84,36 +84,38 @@ namespace LiveChartsCore.Drawing
                 var frameTime = _stopwatch.ElapsedMilliseconds;
                 context.ClearCanvas();
 
-                var toRemoveGeometries = new List<Tuple<IDrawableTask<TDrawingContext>, IDrawable<TDrawingContext>>>();
+                var toRemoveGeometries = new List<Tuple<IPaintTask<TDrawingContext>, IDrawable<TDrawingContext>>>();
 
                 foreach (var task in _paintTasks.OrderBy(x => x.ZIndex).ToArray())
                 {
-                    task.IsCompleted = true;
+                    task.IsValid = true;
                     task.CurrentTime = frameTime;
                     task.InitializeTask(context);
 
-                    foreach (var geometry in task.GetGeometries())
+                    foreach (var geometry in task.GetGeometries(this))
                     {
-                        geometry.IsCompleted = true;
+                        if (geometry == null) continue;
+
+                        geometry.IsValid = true;
                         geometry.CurrentTime = frameTime;
                         if (!task.IsPaused) geometry.Draw(context);
 
-                        isValid = isValid && geometry.IsCompleted;
+                        isValid = isValid && geometry.IsValid;
 
-                        if (geometry.IsCompleted && geometry.RemoveOnCompleted)
+                        if (geometry.IsValid && geometry.RemoveOnCompleted)
                             toRemoveGeometries.Add(
-                                new Tuple<IDrawableTask<TDrawingContext>, IDrawable<TDrawingContext>>(task, geometry));
+                                new Tuple<IPaintTask<TDrawingContext>, IDrawable<TDrawingContext>>(task, geometry));
                     }
 
-                    isValid = isValid && task.IsCompleted;
+                    isValid = isValid && task.IsValid;
 
-                    if (task.RemoveOnCompleted && task.IsCompleted) _ = _paintTasks.Remove(task);
+                    if (task.RemoveOnCompleted && task.IsValid) _ = _paintTasks.Remove(task);
                     task.Dispose();
                 }
 
                 foreach (var tuple in toRemoveGeometries)
                 {
-                    tuple.Item1.RemoveGeometryFromPainTask(tuple.Item2);
+                    tuple.Item1.RemoveGeometryFromPainTask(this, tuple.Item2);
 
                     // if we removed at least one geometry, we need to redraw the chart
                     // to ensure it is not present in the next frame
@@ -149,7 +151,7 @@ namespace LiveChartsCore.Drawing
         /// </summary>
         /// <param name="task">The task.</param>
         /// <returns></returns>
-        public void AddDrawableTask(IDrawableTask<TDrawingContext> task)
+        public void AddDrawableTask(IPaintTask<TDrawingContext> task)
         {
             _ = _paintTasks.Add(task);
             Invalidate();
@@ -160,7 +162,7 @@ namespace LiveChartsCore.Drawing
         /// </summary>
         /// <param name="tasks">The tasks.</param>
         /// <returns></returns>
-        public void SetPaintTasks(HashSet<IDrawableTask<TDrawingContext>> tasks)
+        public void SetPaintTasks(HashSet<IPaintTask<TDrawingContext>> tasks)
         {
             _paintTasks = tasks;
             Invalidate();
@@ -171,7 +173,7 @@ namespace LiveChartsCore.Drawing
         /// </summary>
         /// <param name="task">The task.</param>
         /// <returns></returns>
-        public void RemovePaintTask(IDrawableTask<TDrawingContext> task)
+        public void RemovePaintTask(IPaintTask<TDrawingContext> task)
         {
             _ = _paintTasks.Remove(task);
             Invalidate();
@@ -187,7 +189,7 @@ namespace LiveChartsCore.Drawing
 
             foreach (var task in _paintTasks)
             {
-                foreach (var geometry in task.GetGeometries())
+                foreach (var geometry in task.GetGeometries(this))
                 {
                     count++;
                 }

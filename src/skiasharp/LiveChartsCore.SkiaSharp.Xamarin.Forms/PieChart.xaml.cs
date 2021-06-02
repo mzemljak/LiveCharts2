@@ -224,14 +224,6 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
                LiveCharts.CurrentSettings.DefaultTooltipPosition, propertyChanged: OnBindablePropertyChanged);
 
         /// <summary>
-        /// The tool tip finding strategy property
-        /// </summary>
-        public static readonly BindableProperty TooltipFindingStrategyProperty =
-            BindableProperty.Create(
-                nameof(TooltipFindingStrategy), typeof(TooltipFindingStrategy), typeof(CartesianChart),
-                LiveCharts.CurrentSettings.DefaultTooltipFindingStrategy);
-
-        /// <summary>
         /// The tool tip template property
         /// </summary>
         public static readonly BindableProperty TooltipTemplateProperty =
@@ -257,7 +249,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </summary>
         public static readonly BindableProperty TooltipTextColorProperty =
             BindableProperty.Create(
-                nameof(TooltipTextColor), typeof(c), typeof(CartesianChart),
+                nameof(TooltipTextBrush), typeof(c), typeof(CartesianChart),
                 new c(35 / 255d, 35 / 255d, 35 / 255d), propertyChanged: OnBindablePropertyChanged);
 
         /// <summary>
@@ -265,7 +257,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </summary>
         public static readonly BindableProperty TooltipBackgroundProperty =
             BindableProperty.Create(
-                nameof(TooltipTextColor), typeof(c), typeof(CartesianChart),
+                nameof(TooltipBackground), typeof(c), typeof(CartesianChart),
                 new c(250 / 255d, 250 / 255d, 250 / 255d), propertyChanged: OnBindablePropertyChanged);
 
         /// <summary>
@@ -292,6 +284,9 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         #endregion
 
         #region properties
+
+        /// <inheritdoc cref="IChartView.CoreChart" />
+        public IChart CoreChart => core ?? throw new Exception("Core not set yet.");
 
         System.Drawing.Color IChartView.BackColor
         {
@@ -363,10 +358,10 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         }
 
         /// <inheritdoc cref="IChartView.EasingFunction" />
-        public Func<float, float> EasingFunction
+        public Func<float, float>? EasingFunction
         {
             get => (Func<float, float>)GetValue(EasingFunctionProperty);
-            set => SetValue(AnimationsSpeedProperty, value);
+            set => SetValue(EasingFunctionProperty, value);
         }
 
         /// <inheritdoc cref="IChartView.LegendPosition" />
@@ -465,13 +460,6 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
             set => SetValue(TooltipPositionProperty, value);
         }
 
-        /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
-        public TooltipFindingStrategy TooltipFindingStrategy
-        {
-            get => (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty);
-            set => SetValue(TooltipFindingStrategyProperty, value);
-        }
-
         /// <summary>
         /// Gets or sets the tool tip template.
         /// </summary>
@@ -514,7 +502,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <value>
         /// The color of the tool tip text.
         /// </value>
-        public c TooltipTextColor
+        public c TooltipTextBrush
         {
             get => (c)GetValue(TooltipTextColorProperty);
             set => SetValue(TooltipTextColorProperty, value);
@@ -526,7 +514,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <value>
         /// The color of the tool tip background.
         /// </value>
-        public c TooltipBackgroundColor
+        public c TooltipBackground
         {
             get => (c)GetValue(TooltipBackgroundProperty);
             set => SetValue(TooltipBackgroundProperty, value);
@@ -552,6 +540,17 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
         public bool AutoUpdateEnaled { get; set; } = true;
+
+        /// <inheritdoc cref="IChartView.UpdaterThrottler" />
+        public TimeSpan UpdaterThrottler
+        {
+            get => core?.UpdaterThrottler ?? throw new Exception("core not set yet.");
+            set
+            {
+                if (core == null) throw new Exception("core not set yet.");
+                core.UpdaterThrottler = value;
+            }
+        }
 
         #endregion
 

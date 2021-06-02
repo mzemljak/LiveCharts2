@@ -104,16 +104,8 @@ namespace LiveChartsCore.SkiaSharpView.Painting
         public LinearGradientPaintTask(SKColor start, SKColor end)
             : this(start, end, s_defaultStartPoint, s_defaultEndPoint) { }
 
-        /// <summary>
-        /// Gets or sets the path effect.
-        /// </summary>
-        /// <value>
-        /// The path effect.
-        /// </value>
-        public PathEffect? PathEffect { get; set; }
-
-        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.CloneTask" />
-        public override IDrawableTask<SkiaSharpDrawingContext> CloneTask()
+        /// <inheritdoc cref="IPaintTask{TDrawingContext}.CloneTask" />
+        public override IPaintTask<SkiaSharpDrawingContext> CloneTask()
         {
             return new LinearGradientPaintTask(_gradientStops, _startPoint, _endPoint, _colorPos, _tileMode)
             {
@@ -122,30 +114,42 @@ namespace LiveChartsCore.SkiaSharpView.Painting
                 IsFill = IsFill,
                 Color = Color,
                 IsAntialias = IsAntialias,
-                StrokeThickness = StrokeThickness
+                StrokeThickness = StrokeThickness,
+                StrokeCap = StrokeCap,
+                StrokeJoin = StrokeJoin,
+                StrokeMiter = StrokeMiter,
+                PathEffect = PathEffect?.Clone(),
+                ImageFilter = ImageFilter?.Clone()
             };
         }
 
-        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.SetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
+        /// <inheritdoc cref="IPaintTask{TDrawingContext}.SetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
         public override void SetOpacity(SkiaSharpDrawingContext context, IGeometry<SkiaSharpDrawingContext> geometry)
         {
             throw new System.NotImplementedException();
         }
 
-        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.ResetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
+        /// <inheritdoc cref="IPaintTask{TDrawingContext}.ResetOpacity(TDrawingContext, IGeometry{TDrawingContext})" />
         public override void ResetOpacity(SkiaSharpDrawingContext context, IGeometry<SkiaSharpDrawingContext> geometry)
         {
             throw new System.NotImplementedException();
         }
 
-        /// <inheritdoc cref="IDrawableTask{TDrawingContext}.InitializeTask(TDrawingContext)" />
+        /// <inheritdoc cref="IPaintTask{TDrawingContext}.InitializeTask(TDrawingContext)" />
         public override void InitializeTask(SkiaSharpDrawingContext drawingContext)
         {
             if (skiaPaint == null) skiaPaint = new SKPaint();
 
             var size = GetDrawRectangleSize(drawingContext);
-            var start = new SKPoint(size.Location.X + _startPoint.X * size.Width, size.Location.Y + _startPoint.Y * size.Height);
-            var end = new SKPoint(size.Location.X + _endPoint.X * size.Width, size.Location.Y + _endPoint.Y * size.Height);
+
+            var xf = size.Location.X;
+            var xt = xf + size.Width;
+
+            var yf = size.Location.Y;
+            var yt = yf + size.Height;
+
+            var start = new SKPoint(xf + (xt - xf) * _startPoint.X, yf + (yt - yf) * _startPoint.Y);
+            var end = new SKPoint(xf + (xt - xf) * _endPoint.X, yf + (yt - yf) * _endPoint.Y);
 
             skiaPaint.Shader = SKShader.CreateLinearGradient(
                     start,
@@ -157,6 +161,9 @@ namespace LiveChartsCore.SkiaSharpView.Painting
             skiaPaint.IsAntialias = IsAntialias;
             skiaPaint.IsStroke = true;
             skiaPaint.StrokeWidth = StrokeThickness;
+            skiaPaint.StrokeCap = StrokeCap;
+            skiaPaint.StrokeJoin = StrokeJoin;
+            skiaPaint.StrokeMiter = StrokeMiter;
             skiaPaint.Style = IsStroke ? SKPaintStyle.Stroke : SKPaintStyle.Fill;
 
             if (PathEffect != null)
@@ -165,12 +172,17 @@ namespace LiveChartsCore.SkiaSharpView.Painting
                 skiaPaint.PathEffect = PathEffect.SKPathEffect;
             }
 
-            if (ClipRectangle != RectangleF.Empty)
+            if (ImageFilter != null)
+            {
+                ImageFilter.CreateFilter(drawingContext);
+                skiaPaint.ImageFilter = ImageFilter.SKImageFilter;
+            }
+
+            var clip = GetClipRectangle(drawingContext.MotionCanvas);
+            if (clip != RectangleF.Empty)
             {
                 _ = drawingContext.Canvas.Save();
-                drawingContext.Canvas.ClipRect(
-                    new SKRect(
-                        ClipRectangle.X, ClipRectangle.Y, ClipRectangle.X + ClipRectangle.Width, ClipRectangle.Y + ClipRectangle.Height));
+                drawingContext.Canvas.ClipRect(new SKRect(clip.X, clip.Y, clip.X + clip.Width, clip.Y + clip.Height));
                 _drawingContext = drawingContext;
             }
 
@@ -184,8 +196,9 @@ namespace LiveChartsCore.SkiaSharpView.Painting
         public override void Dispose()
         {
             if (PathEffect != null) PathEffect.Dispose();
+            if (ImageFilter != null) ImageFilter.Dispose();
 
-            if (ClipRectangle != RectangleF.Empty && _drawingContext != null)
+            if (_drawingContext != null && GetClipRectangle(_drawingContext.MotionCanvas) != RectangleF.Empty)
             {
                 _drawingContext.Canvas.Restore();
                 _drawingContext = null;
@@ -196,7 +209,11 @@ namespace LiveChartsCore.SkiaSharpView.Painting
 
         private SKRect GetDrawRectangleSize(SkiaSharpDrawingContext drawingContext)
         {
-            return new SKRect(0, 0, drawingContext.Info.Width, drawingContext.Info.Width);
+            var clip = GetClipRectangle(drawingContext.MotionCanvas);
+
+            return clip == RectangleF.Empty
+                ? new SKRect(0, 0, drawingContext.Info.Width, drawingContext.Info.Width)
+                : new SKRect(clip.X, clip.Y, clip.X + clip.Width, clip.Y + clip.Height);
         }
     }
 }

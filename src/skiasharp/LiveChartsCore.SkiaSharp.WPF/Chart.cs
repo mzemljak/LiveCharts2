@@ -137,14 +137,6 @@ namespace LiveChartsCore.SkiaSharpView.WPF
                new PropertyMetadata(LiveCharts.CurrentSettings.DefaultTooltipPosition, OnDependencyPropertyChanged));
 
         /// <summary>
-        /// The tool tip finding strategy property
-        /// </summary>
-        public static readonly DependencyProperty TooltipFindingStrategyProperty =
-            DependencyProperty.Register(
-                nameof(TooltipFindingStrategy), typeof(TooltipFindingStrategy), typeof(Chart),
-                new PropertyMetadata(LiveCharts.CurrentSettings.DefaultTooltipFindingStrategy, OnDependencyPropertyChanged));
-
-        /// <summary>
         /// The tool tip background property
         /// </summary>
         public static readonly DependencyProperty TooltipBackgroundProperty =
@@ -163,9 +155,9 @@ namespace LiveChartsCore.SkiaSharpView.WPF
         /// <summary>
         /// The tool tip text color property
         /// </summary>
-        public static readonly DependencyProperty TooltipTextColorProperty =
+        public static readonly DependencyProperty TooltipTextBrushProperty =
            DependencyProperty.Register(
-               nameof(TooltipTextColor), typeof(SolidColorBrush), typeof(Chart),
+               nameof(TooltipTextBrush), typeof(SolidColorBrush), typeof(Chart),
                new PropertyMetadata(new SolidColorBrush(System.Windows.Media.Color.FromRgb(35, 35, 35)), OnDependencyPropertyChanged));
 
         /// <summary>
@@ -277,6 +269,9 @@ namespace LiveChartsCore.SkiaSharpView.WPF
 
         #region properties
 
+        /// <inheritdoc cref="IChartView.CoreChart" />
+        public IChart CoreChart => core ?? throw new Exception("Core not set yet.");
+
         System.Drawing.Color IChartView.BackColor
         {
             get => Background is not SolidColorBrush b
@@ -325,7 +320,7 @@ namespace LiveChartsCore.SkiaSharpView.WPF
             set => SetValue(EasingFunctionProperty, value);
         }
 
-        Func<float, float> IChartView.EasingFunction
+        Func<float, float>? IChartView.EasingFunction
         {
             get => EasingFunction;
             set => SetValueOrCurrentValue(EasingFunctionProperty, value);
@@ -370,19 +365,6 @@ namespace LiveChartsCore.SkiaSharpView.WPF
             set => SetValueOrCurrentValue(TooltipPositionProperty, value);
         }
 
-        /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
-        public TooltipFindingStrategy TooltipFindingStrategy
-        {
-            get => (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty);
-            set => SetValue(TooltipFindingStrategyProperty, value);
-        }
-
-        TooltipFindingStrategy IChartView.TooltipFindingStrategy
-        {
-            get => TooltipFindingStrategy;
-            set => SetValueOrCurrentValue(TooltipFindingStrategyProperty, value);
-        }
-
         /// <summary>
         /// Gets or sets the tool tip template.
         /// </summary>
@@ -425,10 +407,10 @@ namespace LiveChartsCore.SkiaSharpView.WPF
         /// <value>
         /// The color of the tool tip text.
         /// </value>
-        public SolidColorBrush TooltipTextColor
+        public SolidColorBrush TooltipTextBrush
         {
-            get => (SolidColorBrush)GetValue(TooltipTextColorProperty);
-            set => SetValue(TooltipTextColorProperty, value);
+            get => (SolidColorBrush)GetValue(TooltipTextBrushProperty);
+            set => SetValue(TooltipTextBrushProperty, value);
         }
 
         /// <summary>
@@ -575,6 +557,17 @@ namespace LiveChartsCore.SkiaSharpView.WPF
         /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
         public bool AutoUpdateEnaled { get; set; } = true;
 
+        /// <inheritdoc cref="IChartView.UpdaterThrottler" />
+        public TimeSpan UpdaterThrottler
+        {
+            get => core?.UpdaterThrottler ?? throw new Exception("core not set yet.");
+            set
+            {
+                if (core == null) throw new Exception("core not set yet.");
+                core.UpdaterThrottler = value;
+            }
+        }
+
         #endregion
 
         /// <inheritdoc cref="OnApplyTemplate" />
@@ -671,7 +664,7 @@ namespace LiveChartsCore.SkiaSharpView.WPF
         /// </summary>
         /// <param name="dp">The identifier of the dependency property to set.</param>
         /// <param name="value">The new local value.</param>
-        protected void SetValueOrCurrentValue(DependencyProperty dp, object value)
+        protected void SetValueOrCurrentValue(DependencyProperty dp, object? value)
         {
             if (IsInitialized)
                 SetValue(dp, value);

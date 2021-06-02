@@ -130,6 +130,15 @@ namespace LiveChartsCore
         Func<ChartPoint, string> DataLabelsFormatter { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether this instance is notifying changes, this property is used internally to turn off
+        /// notifications while the theme is being applied, this property is not designed to be used by the user.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is notifying changes; otherwise, <c>false</c>.
+        /// </value>
+        bool IsNotifyingChanges { get; set; }
+
+        /// <summary>
         /// Occurs before the series is disposed.
         /// </summary>
         event Action<ISeries>? Disposing;
@@ -147,8 +156,9 @@ namespace LiveChartsCore
         /// </summary>
         /// <param name="chart">the chart</param>
         /// <param name="pointerPosition">the pointer position</param>
+        /// <param name="automaticStategy">the already resolved strategy when strategy is set to automatic.</param>
         /// <returns></returns>
-        IEnumerable<TooltipPoint> FindPointsNearTo(IChart chart, PointF pointerPosition);
+        IEnumerable<TooltipPoint> FindPointsNearTo(IChart chart, PointF pointerPosition, TooltipFindingStrategy automaticStategy);
 
         /// <summary>
         /// Marks a given point as a given state.

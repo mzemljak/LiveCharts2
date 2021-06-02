@@ -146,7 +146,24 @@ namespace LiveChartsCore
         /// <returns></returns>
         public override IEnumerable<TooltipPoint> FindPointsNearTo(PointF pointerPosition)
         {
-            return _chartView.Series.SelectMany(series => series.FindPointsNearTo(this, pointerPosition));
+            var actualStrategy = TooltipFindingStrategy;
+            if (TooltipFindingStrategy == TooltipFindingStrategy.Automatic)
+            {
+                var areAllX = true;
+                var areAllY = true;
+
+                foreach (var series in Series)
+                {
+                    areAllX = areAllX && (series.SeriesProperties & SeriesProperties.PrefersXStrategyTooltips) != 0;
+                    areAllY = areAllY && (series.SeriesProperties & SeriesProperties.PrefersYStrategyTooltips) != 0;
+                }
+
+                actualStrategy = areAllX
+                    ? TooltipFindingStrategy.CompareOnlyX
+                    : (areAllY ? TooltipFindingStrategy.CompareOnlyY : TooltipFindingStrategy.CompareAll);
+            }
+
+            return _chartView.Series.SelectMany(series => series.FindPointsNearTo(this, pointerPosition, actualStrategy));
         }
 
         /// <summary>
@@ -362,18 +379,23 @@ namespace LiveChartsCore
                 // restart axes bounds and meta data
                 foreach (var axis in XAxes)
                 {
+                    axis.IsNotifyingChanges = false;
                     axis.Initialize(AxisOrientation.X);
                     theme.ResolveAxisDefaults(axis, forceApply);
+                    axis.IsNotifyingChanges = true;
                 }
                 foreach (var axis in YAxes)
                 {
+                    axis.IsNotifyingChanges = false;
                     axis.Initialize(AxisOrientation.Y);
                     theme.ResolveAxisDefaults(axis, forceApply);
+                    axis.IsNotifyingChanges = true;
                 }
 
                 // get seriesBounds
                 foreach (var series in Series)
                 {
+                    series.IsNotifyingChanges = false;
                     if (series.SeriesId == -1) series.SeriesId = _nextSeries++;
                     theme.ResolveSeriesDefaults(theme.CurrentColors, series, forceApply);
 
@@ -395,6 +417,8 @@ namespace LiveChartsCore
                         primaryAxis.DataBounds.MinDelta = seriesBounds.MinDeltaPrimary;
                     if (secondaryAxis.DataBounds.MinDelta < seriesBounds.MinDeltaSecondary)
                         secondaryAxis.DataBounds.MinDelta = seriesBounds.MinDeltaSecondary;
+
+                    series.IsNotifyingChanges = true;
                 }
 
                 if (legend != null) legend.Draw(this);

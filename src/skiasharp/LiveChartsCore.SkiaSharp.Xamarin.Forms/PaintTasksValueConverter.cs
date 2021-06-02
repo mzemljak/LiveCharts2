@@ -20,10 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using LiveChartsCore.Kernel;
-using LiveChartsCore.SkiaSharpView.Drawing;
 using System;
 using System.Globalization;
+using LiveChartsCore.Kernel;
+using LiveChartsCore.SkiaSharpView.Drawing;
 using Xamarin.Forms;
 
 namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
@@ -49,7 +49,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var v = (IDrawableSeries<SkiaSharpDrawingContext>)value;
-            return v == null ? null : v.DefaultPaintContext.PaintTasks;
+            return v?.CanvasSchedule.PaintSchedules;
         }
 
         /// <summary>

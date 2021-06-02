@@ -60,11 +60,11 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
         private LegendOrientation _legendOrientation = LiveCharts.CurrentSettings.DefaultLegendOrientation;
         private Margin? _drawMargin = null;
         private TooltipPosition _tooltipPosition = LiveCharts.CurrentSettings.DefaultTooltipPosition;
-        private TooltipFindingStrategy _tooltipFindingStrategy = LiveCharts.CurrentSettings.DefaultTooltipFindingStrategy;
         private Font _tooltipFont = new(new FontFamily("Trebuchet MS"), 11, FontStyle.Regular);
         private Color _tooltipBackColor = Color.FromArgb(255, 250, 250, 250);
         private Font _legendFont = new(new FontFamily("Trebuchet MS"), 11, FontStyle.Regular);
         private Color _legendBackColor = Color.FromArgb(255, 250, 250, 250);
+        private Color _tooltipTextColor;
         private readonly ActionThrottler _mouseMoveThrottler;
 
         /// <summary>
@@ -135,6 +135,9 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
 
         #region properties
 
+        /// <inheritdoc cref="IChartView.CoreChart" />
+        public IChart CoreChart => core ?? throw new Exception("Core not set yet.");
+
         Color IChartView.BackColor
         {
             get => BackColor;
@@ -184,9 +187,6 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
         /// <inheritdoc cref="IChartView.LegendPosition" />
         public TooltipPosition TooltipPosition { get => _tooltipPosition; set { _tooltipPosition = value; OnPropertyChanged(); } }
 
-        /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
-        public TooltipFindingStrategy TooltipFindingStrategy { get => _tooltipFindingStrategy; set { _tooltipFindingStrategy = value; OnPropertyChanged(); } }
-
         /// <summary>
         /// Gets or sets the default tool tip font.
         /// </summary>
@@ -194,6 +194,14 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
         /// The tool tip font.
         /// </value>
         public Font TooltipFont { get => _tooltipFont; set { _tooltipFont = value; OnPropertyChanged(); } }
+
+        /// <summary>
+        /// Gets or sets the color of the tool tip text.
+        /// </summary>
+        /// <value>
+        /// The color of the tool tip text.
+        /// </value>
+        public Color TooltipTextColor { get => _tooltipTextColor; set { _tooltipTextColor = value; OnPropertyChanged(); } }
 
         /// <summary>
         /// Gets or sets the color of the default tool tip back.
@@ -211,6 +219,17 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
         public bool AutoUpdateEnaled { get; set; } = true;
+
+        /// <inheritdoc cref="IChartView.UpdaterThrottler" />
+        public TimeSpan UpdaterThrottler
+        {
+            get => core?.UpdaterThrottler ?? throw new Exception("core not set yet.");
+            set
+            {
+                if (core == null) throw new Exception("core not set yet.");
+                core.UpdaterThrottler = value;
+            }
+        }
 
         #endregion
 

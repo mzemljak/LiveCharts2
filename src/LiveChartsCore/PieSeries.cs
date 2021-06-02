@@ -124,20 +124,20 @@ namespace LiveChartsCore
             if (Fill != null)
             {
                 Fill.ZIndex = actualZIndex + 0.1;
-                Fill.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
+                Fill.SetClipRectangle(chart.Canvas, new RectangleF(drawLocation, drawMarginSize));
                 chart.Canvas.AddDrawableTask(Fill);
             }
             if (Stroke != null)
             {
                 Stroke.ZIndex = actualZIndex + 0.2;
-                Stroke.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
+                Stroke.SetClipRectangle(chart.Canvas, new RectangleF(drawLocation, drawMarginSize));
                 chart.Canvas.AddDrawableTask(Stroke);
             }
-            if (DataLabelsDrawableTask != null)
+            if (DataLabelsPaint != null)
             {
-                DataLabelsDrawableTask.ZIndex = 1000 + actualZIndex + 0.3;
-                DataLabelsDrawableTask.ClipRectangle = new RectangleF(drawLocation, drawMarginSize);
-                chart.Canvas.AddDrawableTask(DataLabelsDrawableTask);
+                DataLabelsPaint.ZIndex = 1000 + actualZIndex + 0.3;
+                DataLabelsPaint.SetClipRectangle(chart.Canvas, new RectangleF(drawLocation, drawMarginSize));
+                chart.Canvas.AddDrawableTask(DataLabelsPaint);
             }
 
             var cx = drawLocation.X + drawMarginSize.Width * 0.5f;
@@ -257,8 +257,8 @@ namespace LiveChartsCore
                     _ = everFetched.Add(point);
                 }
 
-                if (Fill != null) Fill.AddGeometryToPaintTask(visual);
-                if (Stroke != null) Stroke.AddGeometryToPaintTask(visual);
+                if (Fill != null) Fill.AddGeometryToPaintTask(chart.Canvas, visual);
+                if (Stroke != null) Stroke.AddGeometryToPaintTask(chart.Canvas, visual);
 
                 var dougnutGeometry = visual;
 
@@ -290,7 +290,7 @@ namespace LiveChartsCore
                 OnPointMeasured(point);
                 _ = toDeletePoints.Remove(point);
 
-                if (DataLabelsDrawableTask != null && point.PrimaryValue > 0)
+                if (DataLabelsPaint != null && point.PrimaryValue > 0)
                 {
                     var label = (TLabel?)point.Context.Label;
 
@@ -307,8 +307,9 @@ namespace LiveChartsCore
                         l.CompleteAllTransitions();
                         label = l;
                         point.Context.Label = l;
-                        DataLabelsDrawableTask.AddGeometryToPaintTask(l);
                     }
+
+                    DataLabelsPaint.AddGeometryToPaintTask(chart.Canvas, label);
 
                     label.Text = DataLabelsFormatter(point);
                     label.TextSize = dls;
@@ -342,7 +343,7 @@ namespace LiveChartsCore
 
                     var labelPosition = GetLabelPolarPosition(
                         cx, cy, ((w + relativeOuterRadius * 2) * 0.5f + stackedInnerRadius) * 0.5f, start + initialRotation, end,
-                        label.Measure(DataLabelsDrawableTask), DataLabelsPosition);
+                        label.Measure(DataLabelsPaint), DataLabelsPosition);
 
                     label.X = labelPosition.X;
                     label.Y = labelPosition.Y;
@@ -392,7 +393,7 @@ namespace LiveChartsCore
         /// </summary>
         protected override void OnPaintContextChanged()
         {
-            var context = new PaintContext<TDrawingContext>();
+            var context = new CanvasSchedule<TDrawingContext>();
 
             var w = LegendShapeSize;
             var sh = 0f;
@@ -413,8 +414,7 @@ namespace LiveChartsCore
                 sh = strokeClone.StrokeThickness;
                 strokeClone.ZIndex = 1;
                 w += 2 * strokeClone.StrokeThickness;
-                strokeClone.AddGeometryToPaintTask(visual);
-                _ = context.PaintTasks.Add(strokeClone);
+                context.PaintSchedules.Add(new PaintSchedule<TDrawingContext>(strokeClone, visual));
             }
 
             if (Fill != null)
@@ -431,15 +431,14 @@ namespace LiveChartsCore
                     StartAngle = 0,
                     SweepAngle = 359.9999f
                 };
-                fillClone.AddGeometryToPaintTask(visual);
-                _ = context.PaintTasks.Add(fillClone);
+                context.PaintSchedules.Add(new PaintSchedule<TDrawingContext>(fillClone, visual));
             }
 
             context.Width = w;
             context.Height = w;
 
-            paintContext = context;
-            OnPropertyChanged(nameof(DefaultPaintContext));
+            canvaSchedule = context;
+            OnPropertyChanged(nameof(CanvasSchedule));
         }
 
         /// <summary>

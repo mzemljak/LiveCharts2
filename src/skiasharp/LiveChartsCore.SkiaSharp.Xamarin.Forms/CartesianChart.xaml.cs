@@ -32,7 +32,6 @@ using System.ComponentModel;
 using System.Drawing;
 using Xamarin.Essentials;
 using Xamarin.Forms.Xaml;
-using System.Diagnostics;
 using Xamarin.Forms;
 using c = Xamarin.Forms.Color;
 
@@ -49,10 +48,10 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </summary>
         protected Chart<SkiaSharpDrawingContext>? core;
 
-        private readonly CollectionDeepObserver<ISeries> seriesObserver;
-        private readonly CollectionDeepObserver<IAxis> xObserver;
-        private readonly CollectionDeepObserver<IAxis> yObserver;
-        private Grid? grid;
+        private readonly CollectionDeepObserver<ISeries> _seriesObserver;
+        private readonly CollectionDeepObserver<IAxis> _xObserver;
+        private readonly CollectionDeepObserver<IAxis> _yObserver;
+        private Grid? _grid;
 
         #endregion
 
@@ -75,9 +74,9 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
             InitializeCore();
             SizeChanged += OnSizeChanged;
 
-            seriesObserver = new CollectionDeepObserver<ISeries>(OnDeepCollectionChanged, OnDeepCollectionPropertyChanged, true);
-            xObserver = new CollectionDeepObserver<IAxis>(OnDeepCollectionChanged, OnDeepCollectionPropertyChanged, true);
-            yObserver = new CollectionDeepObserver<IAxis>(OnDeepCollectionChanged, OnDeepCollectionPropertyChanged, true);
+            _seriesObserver = new CollectionDeepObserver<ISeries>(OnDeepCollectionChanged, OnDeepCollectionPropertyChanged, true);
+            _xObserver = new CollectionDeepObserver<IAxis>(OnDeepCollectionChanged, OnDeepCollectionPropertyChanged, true);
+            _yObserver = new CollectionDeepObserver<IAxis>(OnDeepCollectionChanged, OnDeepCollectionPropertyChanged, true);
 
             XAxes = new List<IAxis>() { LiveCharts.CurrentSettings.AxisProvider() };
             YAxes = new List<IAxis>() { LiveCharts.CurrentSettings.AxisProvider() };
@@ -103,7 +102,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
                 (BindableObject o, object oldValue, object newValue) =>
                 {
                     var chart = (CartesianChart)o;
-                    var seriesObserver = chart.seriesObserver;
+                    var seriesObserver = chart._seriesObserver;
                     seriesObserver.Dispose((IEnumerable<ISeries>)oldValue);
                     seriesObserver.Initialize((IEnumerable<ISeries>)newValue);
                     if (chart.core == null) return;
@@ -115,11 +114,11 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </summary>
         public static readonly BindableProperty XAxesProperty =
             BindableProperty.Create(
-                nameof(XAxes), typeof(IEnumerable<IAxis>), typeof(CartesianChart), new List<IAxis>() { LiveCharts.CurrentSettings.AxisProvider() },
+                nameof(XAxes), typeof(IEnumerable<IAxis>), typeof(CartesianChart), new List<IAxis>() { new Axis() },
                 BindingMode.Default, null, (BindableObject o, object oldValue, object newValue) =>
                 {
                     var chart = (CartesianChart)o;
-                    var observer = chart.xObserver;
+                    var observer = chart._xObserver;
                     observer.Dispose((IEnumerable<IAxis>)oldValue);
                     observer.Initialize((IEnumerable<IAxis>)newValue);
                     if (chart.core == null) return;
@@ -131,11 +130,11 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </summary>
         public static readonly BindableProperty YAxesProperty =
             BindableProperty.Create(
-                nameof(YAxes), typeof(IEnumerable<IAxis>), typeof(CartesianChart), new List<IAxis>() { LiveCharts.CurrentSettings.AxisProvider() },
+                nameof(YAxes), typeof(IEnumerable<IAxis>), typeof(CartesianChart), new List<IAxis>() { new Axis() },
                 BindingMode.Default, null, (BindableObject o, object oldValue, object newValue) =>
                 {
                     var chart = (CartesianChart)o;
-                    var observer = chart.yObserver;
+                    var observer = chart._yObserver;
                     observer.Dispose((IEnumerable<IAxis>)oldValue);
                     observer.Initialize((IEnumerable<IAxis>)newValue);
                     if (chart.core == null) return;
@@ -281,9 +280,9 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <summary>
         /// The tool tip text color property
         /// </summary>
-        public static readonly BindableProperty TooltipTextColorProperty =
+        public static readonly BindableProperty TooltipTextBrushProperty =
             BindableProperty.Create(
-                nameof(TooltipTextColor), typeof(c), typeof(CartesianChart),
+                nameof(TooltipTextBrush), typeof(c), typeof(CartesianChart),
                 new c(35 / 255d, 35 / 255d, 35 / 255d), propertyChanged: OnBindablePropertyChanged);
 
         /// <summary>
@@ -291,7 +290,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// </summary>
         public static readonly BindableProperty TooltipBackgroundProperty =
             BindableProperty.Create(
-                nameof(TooltipTextColor), typeof(c), typeof(CartesianChart),
+                nameof(TooltipBackground), typeof(c), typeof(CartesianChart),
                 new c(250 / 255d, 250 / 255d, 250 / 255d), propertyChanged: OnBindablePropertyChanged);
 
         /// <summary>
@@ -319,6 +318,9 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         #region properties
 
+        /// <inheritdoc cref="IChartView.CoreChart" />
+        public IChart CoreChart => core ?? throw new Exception("Core not set yet.");
+
         System.Drawing.Color IChartView.BackColor
         {
             get => Background is not SolidColorBrush b
@@ -339,11 +341,11 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <inheritdoc cref="IChartView{TDrawingContext}.CoreCanvas" />
         public MotionCanvas<SkiaSharpDrawingContext> CoreCanvas => canvas.CanvasCore;
 
-        Grid IMobileChart.LayoutGrid => grid ??= this.FindByName<Grid>("gridLayout");
+        Grid IMobileChart.LayoutGrid => _grid ??= this.FindByName<Grid>("gridLayout");
 
         BindableObject IMobileChart.Canvas => canvas;
 
-        BindableObject IMobileChart.Legend => legend;
+        BindableObject IMobileChart.Legend => null;// legend;
 
         /// <inheritdoc cref="IChartView.DrawMargin" />
         public Margin? DrawMargin
@@ -381,10 +383,10 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         }
 
         /// <inheritdoc cref="IChartView.EasingFunction" />
-        public Func<float, float> EasingFunction
+        public Func<float, float>? EasingFunction
         {
             get => (Func<float, float>)GetValue(EasingFunctionProperty);
-            set => SetValue(AnimationsSpeedProperty, value);
+            set => SetValue(EasingFunctionProperty, value);
         }
 
         /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.ZoomMode" />
@@ -488,7 +490,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         }
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.Legend" />
-        public IChartLegend<SkiaSharpDrawingContext>? Legend => legend;
+        public IChartLegend<SkiaSharpDrawingContext>? Legend => null;// legend;
 
         /// <inheritdoc cref="IChartView.TooltipPosition" />
         public TooltipPosition TooltipPosition
@@ -497,7 +499,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
             set => SetValue(TooltipPositionProperty, value);
         }
 
-        /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
+        /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.TooltipFindingStrategy" />
         public TooltipFindingStrategy TooltipFindingStrategy
         {
             get => (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty);
@@ -546,10 +548,10 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <value>
         /// The color of the tool tip text.
         /// </value>
-        public c TooltipTextColor
+        public c TooltipTextBrush
         {
-            get => (c)GetValue(TooltipTextColorProperty);
-            set => SetValue(TooltipTextColorProperty, value);
+            get => (c)GetValue(TooltipTextBrushProperty);
+            set => SetValue(TooltipTextBrushProperty, value);
         }
 
         /// <summary>
@@ -558,7 +560,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         /// <value>
         /// The color of the tool tip background.
         /// </value>
-        public c TooltipBackgroundColor
+        public c TooltipBackground
         {
             get => (c)GetValue(TooltipBackgroundProperty);
             set => SetValue(TooltipBackgroundProperty, value);
@@ -584,6 +586,17 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
         public bool AutoUpdateEnaled { get; set; } = true;
+
+        /// <inheritdoc cref="IChartView.UpdaterThrottler" />
+        public TimeSpan UpdaterThrottler
+        {
+            get => core?.UpdaterThrottler ?? throw new Exception("core not set yet.");
+            set
+            {
+                if (core == null) throw new Exception("core not set yet.");
+                core.UpdaterThrottler = value;
+            }
+        }
 
         #endregion
 
@@ -655,7 +668,8 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         private void PanGestureRecognizer_PanUpdated(object? sender, PanUpdatedEventArgs e)
         {
-            if (e.StatusType != GestureStatus.Running || core == null) return;
+            if (core == null) return;
+            if (e.StatusType != GestureStatus.Running) return;
 
             var c = (CartesianChart<SkiaSharpDrawingContext>)core;
             c.Pan(new PointF((float)e.TotalX, (float)e.TotalY));
@@ -663,7 +677,6 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
 
         private void PinchGestureRecognizer_PinchUpdated(object? sender, PinchGestureUpdatedEventArgs e)
         {
-            Trace.WriteLine($"{e.ScaleOrigin.X}, {e.ScaleOrigin.Y}");
             if (e.Status != GestureStatus.Running || Math.Abs(e.Scale - 1) < 0.05 || core == null) return;
 
             var c = (CartesianChart<SkiaSharpDrawingContext>)core;

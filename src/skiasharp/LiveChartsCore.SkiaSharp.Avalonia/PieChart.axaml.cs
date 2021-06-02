@@ -169,13 +169,6 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
                 nameof(TooltipPosition), LiveCharts.CurrentSettings.DefaultTooltipPosition, inherits: true);
 
         /// <summary>
-        /// The tool tip finding strategy property
-        /// </summary>
-        public static readonly AvaloniaProperty<TooltipFindingStrategy> TooltipFindingStrategyProperty =
-            AvaloniaProperty.Register<CartesianChart, TooltipFindingStrategy>(
-                nameof(LegendPosition), LiveCharts.CurrentSettings.DefaultTooltipFindingStrategy, inherits: true);
-
-        /// <summary>
         /// The tool tip font family property
         /// </summary>
         public static readonly AvaloniaProperty<A.Media.FontFamily> TooltipFontFamilyProperty =
@@ -292,6 +285,9 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
 
         #region properties
 
+        /// <inheritdoc cref="IChartView.CoreChart" />
+        public IChart CoreChart => core ?? throw new Exception("Core not set yet.");
+
         System.Drawing.Color IChartView.BackColor
         {
             get => Background is not ISolidColorBrush b
@@ -359,7 +355,7 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         }
 
         /// <inheritdoc cref="IChartView.EasingFunction" />
-        public Func<float, float> EasingFunction
+        public Func<float, float>? EasingFunction
         {
             get => (Func<float, float>)GetValue(EasingFunctionProperty);
             set => SetValue(EasingFunctionProperty, value);
@@ -370,13 +366,6 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         {
             get => (TooltipPosition)GetValue(TooltipPositionProperty);
             set => SetValue(TooltipPositionProperty, value);
-        }
-
-        /// <inheritdoc cref="IChartView.TooltipFindingStrategy" />
-        public TooltipFindingStrategy TooltipFindingStrategy
-        {
-            get => (TooltipFindingStrategy)GetValue(TooltipFindingStrategyProperty);
-            set => SetValue(TooltipFindingStrategyProperty, value);
         }
 
         /// <summary>
@@ -572,6 +561,17 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
 
         /// <inheritdoc cref="IChartView{TDrawingContext}.AutoUpdateEnaled" />
         public bool AutoUpdateEnaled { get; set; } = true;
+
+        /// <inheritdoc cref="IChartView.UpdaterThrottler" />
+        public TimeSpan UpdaterThrottler
+        {
+            get => core?.UpdaterThrottler ?? throw new Exception("core not set yet.");
+            set
+            {
+                if (core == null) throw new Exception("core not set yet.");
+                core.UpdaterThrottler = value;
+            }
+        }
 
         #endregion
 
