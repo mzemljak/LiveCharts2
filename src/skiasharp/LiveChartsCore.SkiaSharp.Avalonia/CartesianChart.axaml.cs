@@ -59,10 +59,11 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         protected IChartLegend<SkiaSharpDrawingContext>? legend;
 
         /// <summary>
-        /// The tooltip
+        /// The tool tip
         /// </summary>
         protected IChartTooltip<SkiaSharpDrawingContext>? tooltip;
 
+        private MotionCanvas? _avaloniaCanvas;
         private readonly ActionThrottler _mouseMoveThrottler;
         private PointF _mousePosition = new();
         private readonly CollectionDeepObserver<ISeries> _seriesObserver;
@@ -141,6 +142,13 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         /// </summary>
         public static readonly AvaloniaProperty<IEnumerable<IAxis>> YAxesProperty =
             AvaloniaProperty.Register<CartesianChart, IEnumerable<IAxis>>(nameof(YAxes), Enumerable.Empty<IAxis>(), inherits: true);
+
+        /// <summary>
+        /// The draw margin frame property
+        /// </summary>
+        public static readonly AvaloniaProperty<DrawMarginFrame<SkiaSharpDrawingContext>?> DrawMarginFrameProperty =
+            AvaloniaProperty.Register<CartesianChart, DrawMarginFrame<SkiaSharpDrawingContext>?>(
+                nameof(DrawMarginFrame), null, inherits: true);
 
         /// <summary>
         /// The zoom mode property
@@ -305,7 +313,7 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
 
         #endregion
 
-        #region properties 
+        #region properties
 
         /// <inheritdoc cref="IChartView.CoreChart" />
         public IChart CoreChart => core ?? throw new Exception("Core not set yet.");
@@ -329,11 +337,14 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
             }
         }
 
-        SizeF IChartView.ControlSize => new()
-        {
-            Width = (float)Bounds.Width,
-            Height = (float)Bounds.Height
-        };
+        SizeF IChartView.ControlSize =>
+            _avaloniaCanvas == null
+            ? new()
+            : new()
+            {
+                Width = (float)_avaloniaCanvas.Bounds.Width,
+                Height = (float)_avaloniaCanvas.Bounds.Height
+            };
 
         /// <inheritdoc cref="IChartView.DrawMargin" />
         public Margin? DrawMargin
@@ -361,6 +372,13 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         {
             get => (IEnumerable<IAxis>)GetValue(YAxesProperty);
             set => SetValue(YAxesProperty, value);
+        }
+
+        /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.DrawMarginFrame" />
+        public DrawMarginFrame<SkiaSharpDrawingContext>? DrawMarginFrame
+        {
+            get => (DrawMarginFrame<SkiaSharpDrawingContext>)GetValue(DrawMarginFrameProperty);
+            set => SetValue(DrawMarginFrameProperty, value);
         }
 
         /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.ZoomMode" />
@@ -643,6 +661,7 @@ namespace LiveChartsCore.SkiaSharpView.Avalonia
         protected void InitializeCore()
         {
             var canvas = this.FindControl<MotionCanvas>("canvas");
+            _avaloniaCanvas = canvas;
             core = new CartesianChart<SkiaSharpDrawingContext>(this, LiveChartsSkiaSharp.DefaultPlatformBuilder, canvas.CanvasCore);
 
             core.Measuring += OnCoreMeasuring;

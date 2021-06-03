@@ -46,6 +46,7 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
         private IEnumerable<ISeries> _series = new List<ISeries>();
         private IEnumerable<IAxis> _xAxes = new List<Axis> { new Axis() };
         private IEnumerable<IAxis> _yAxes = new List<Axis> { new Axis() };
+        private DrawMarginFrame<SkiaSharpDrawingContext>? _drawMarginFrame;
         private TooltipFindingStrategy _tooltipFindingStrategy = LiveCharts.CurrentSettings.DefaultTooltipFindingStrategy;
 
         /// <summary>
@@ -119,6 +120,18 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
             }
         }
 
+        /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.DrawMarginFrame" />
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public DrawMarginFrame<SkiaSharpDrawingContext>? DrawMarginFrame
+        {
+            get => _drawMarginFrame;
+            set
+            {
+                _drawMarginFrame = value;
+                core?.Update();
+            }
+        }
+
         /// <inheritdoc cref="ICartesianChartView{TDrawingContext}.ZoomMode" />
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ZoomAndPanMode ZoomMode { get; set; } = LiveCharts.CurrentSettings.DefaultZoomMode;
@@ -136,7 +149,6 @@ namespace LiveChartsCore.SkiaSharpView.WinForms
         protected override void InitializeCore()
         {
             core = new CartesianChart<SkiaSharpDrawingContext>(this, LiveChartsSkiaSharp.DefaultPlatformBuilder, motionCanvas.CanvasCore);
-            //legend = Template.FindName("legend", this) as IChartLegend<SkiaSharpDrawingContext>;
             core.Update();
         }
 
