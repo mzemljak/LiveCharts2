@@ -102,10 +102,10 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
         public StackOrientation LegendOrientation { get; set; }
 
         // <summary>
-        /// Gets or sets the color of the tooltip background.
+        /// Gets or sets the color of the tool tip background.
         /// </summary>
         /// <value>
-        /// The color of the tooltip background.
+        /// The color of the tool tip background.
         /// </value>
         public Color LegendBackgroundColor { get; set; }
 
@@ -203,7 +203,7 @@ namespace LiveChartsCore.SkiaSharpView.Xamarin.Forms
             LegendBackgroundColor = mobileChart.TooltipBackground;
             LegendFontFamily = mobileChart.LegendFontFamily;
             LegendFontSize = mobileChart.LegendFontSize;
-            LegendTextColor = mobileChart.LegendTextColor;
+            LegendTextColor = mobileChart.LegendTextBrush;
             LegendFontAttributes = mobileChart.LegendFontAttributes;
 
             BuildContent();
